@@ -74,24 +74,26 @@
                         <li>Ammo: Limited shots that recharge over time.</li>
                         <li>Level Up: Kill zombies for XP to get traps.</li>
                         <li>Place Traps: Scroll Wheel or R/E to rotate.</li>
+                        <li>Gold: Spend it in the shop for permanent upgrades.</li>
                     </ul>
                 </div>
 
                 <div id="tab-tips" class="menu-tab-content">
                     <h2 class="content-header">Helpful Tips</h2>
                     <ul class="content-list">
-                        <li>Create Chokepoints with barricades.</li>
+                        <li>Place Plague Totems further away from the tower.</li>
                         <li>Combine Barbed Wire with Tar Pits.</li>
-                        <li>Protect your fragile Wards.</li>
+                        <li>Combine Soul Siphons for big XP gains.</li>
                         <li>Press ESC to pause mid-run!</li>
                     </ul>
                 </div>
 
                 <div id="tab-patch" class="menu-tab-content">
-                    <h2 class="content-header">Patch Notes (v0.4)</h2>
+                    <h2 class="content-header">Patch Notes (v0.5)</h2>
                     <ul class="content-list">
-                        <li><strong style="color: #4a90e2;">Bug Fixes:</strong>Made it so the game doesn't freeze when you start a new run.</li>
-                        <li><strong style="color: #4a90e2;">QOL Update:</strong>Changed poison color so it doesn't blend in with the background.</li>
+                        <li><strong style="color: #4a90e2;">Bug Fixes:</strong>Fixed some issues with the Plague Totem.</li>
+                        <li><strong style="color: #4a90e2;">Upgrades:</strong>Added another building type and 6 more gold upgrades.</li>
+                        <li><strong style="color: #4a90e2;">New Content:</strong>Added an ending to the game.</li>
                     </ul>
                 </div>
 
@@ -124,6 +126,17 @@
                 <p>Gold Earned: <strong style="color: #ffd700;">+<span id="runGoldEl"></span></strong></p>
             </div>
             <button class="start-btn" onclick="resetGame()">RETURN TO HUB</button>
+        </div>
+    </div>
+
+    <div id="victoryModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; justify-content: center; align-items: center; z-index: 30; background: rgba(20, 20, 50, 0.95); cursor: default;">
+        <div class="modal-content" style="max-width: 600px; border-color: #ffd700;">
+            <h1 style="color: #ffd700; font-size: 40px; margin-top: 0; text-shadow: 0 0 15px #ffd700, 2px 2px 0px black;">VICTORY!</h1>
+            <p style="font-size: 14px; margin-bottom: 30px;">The dark crystals are shattered. Your tower stands triumphant.</p>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <button class="start-btn" style="background: #4a90e2; border-color: white;" onclick="continueRun()">KEEP PLAYING</button>
+                <button class="start-btn" style="background: #e94560;" onclick="resetGame()">RETURN TO HUB</button>
+            </div>
         </div>
     </div>
 
