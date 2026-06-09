@@ -376,6 +376,44 @@ window.addEventListener('keydown', (event) => {
     }
 });
 
+// --- AUTO-RESIZE & SHIFT SCREEN ---
+window.addEventListener('resize', () => {
+    // Store the old dimensions before updating
+    const oldWidth = canvas.width;
+    const oldHeight = canvas.height;
+    
+    // Update canvas to the new window size
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // Calculate how much the center of the screen moved
+    const diffX = (canvas.width - oldWidth) / 2;
+    const diffY = (canvas.height - oldHeight) / 2;
+    
+    // Snap the player exactly to the new center
+    player.x = canvas.width / 2;
+    player.y = canvas.height / 2;
+    
+    // Shift all existing entities by the difference so they don't jump around
+    structures.forEach(s => { s.x += diffX; s.y += diffY; });
+    enemies.forEach(e => { e.x += diffX; e.y += diffY; });
+    crystals.forEach(c => { c.x += diffX; c.y += diffY; });
+    
+    spells.forEach(s => { 
+        s.startX += diffX; s.startY += diffY; 
+        s.targetX += diffX; s.targetY += diffY; 
+    });
+    
+    visualEffects.forEach(v => {
+        if (v.x !== undefined) v.x += diffX;
+        if (v.y !== undefined) v.y += diffY;
+        if (v.x1 !== undefined) { 
+            v.x1 += diffX; v.x2 += diffX; 
+            v.y1 += diffY; v.y2 += diffY; 
+        }
+    });
+});
+
 window.addEventListener('click', (event) => {
     if (!isGameStarted || (isPaused && !currentBlueprint)) return; 
 
