@@ -31,7 +31,6 @@ function switchMenuTab(tabId, buttonElement) {
 }
 
 function showSaveSelect() {
-    // Refresh the text on the save buttons
     for (let i = 1; i <= 3; i++) {
         let s = JSON.parse(localStorage.getItem('roR_save_' + i));
         let btn = document.getElementById('saveBtn' + i);
@@ -39,16 +38,13 @@ function showSaveSelect() {
         else btn.innerText = `SAVE ${i} (Empty)`;
     }
     
-    // Switch views to the Initial Screen
     document.getElementById('saveSelectState').style.display = 'block';
     document.getElementById('runReadyState').style.display = 'none';
     
-    // Show Credits/Patch Notes, hide Shop
     document.getElementById('btnTabPatch').style.display = 'block';
     document.getElementById('btnTabCredits').style.display = 'block';
     document.getElementById('btnTabShop').style.display = 'none'; 
     
-    // Ensure we are on the 'Play' tab
     switchMenuTab('tab-start', document.getElementById('btnTabStart'));
     
     currentSaveSlot = null;
@@ -71,11 +67,9 @@ function loadSaveSlot(slotIndex) {
 
     document.getElementById('currentSaveDisplay').innerText = slotIndex;
     
-    // Switch the view to the Hub
     document.getElementById('saveSelectState').style.display = 'none';
     document.getElementById('runReadyState').style.display = 'block';
     
-    // Unlock the shop, Hide Patch Notes & Credits
     document.getElementById('btnTabShop').style.display = 'block'; 
     document.getElementById('btnTabPatch').style.display = 'none';
     document.getElementById('btnTabCredits').style.display = 'none';
@@ -88,7 +82,7 @@ function saveGame() {
 function deleteSave() {
     if (confirm("Are you sure you want to delete THIS save file? This cannot be undone.")) {
         localStorage.removeItem('roR_save_' + currentSaveSlot);
-        showSaveSelect(); // Kick them back to the select screen
+        showSaveSelect();
     }
 }
 
@@ -187,14 +181,13 @@ function resetGame() {
     gameOverModal.style.display = 'none';
     pauseMenu.style.display = 'none';
     
-    // Automatically force the menu back to the 'Play' tab when returning to the hub
     switchMenuTab('tab-start', document.getElementById('btnTabStart'));
     mainMenu.style.display = 'flex'; 
     
     isGameStarted = false;
     isPaused = false;
-    currentBlueprint = null;            // <-- Add this to clear traps
-    controlsTip.style.display = 'none'; // <-- Add this to hide the tip text
+    currentBlueprint = null;
+    controlsTip.style.display = 'none';
     
     survivalTimeMs = 0;
     formattedTime = "00:00";
@@ -228,7 +221,7 @@ function togglePauseMenu() {
 }
 
 function triggerGameOver() {
-    isGameStarted = false; // <-- Pauses the action without killing the render loop
+    isGameStarted = false; 
     clearTimeout(spawnTimer);
     document.getElementById('finalLevelEl').innerText = level;
     document.getElementById('finalTimeEl').innerText = formattedTime;
@@ -485,22 +478,27 @@ function animate() {
         const struct = structures[i];
         
         if (!isPaused && isGameStarted) {
-            if (struct.type === 'tesla' && currentFrameTime - struct.lastTick > 2000) {
-                const inRange = enemies.filter(e => Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius);
-                if (inRange.length > 0) {
-                    const target = inRange[Math.floor(Math.random() * inRange.length)];
-                    target.hp -= teslaDamage; 
-                    if (target.hp <= 0) target.dead = true;
-                    struct.lastTick = currentFrameTime;
-                    visualEffects.push({ type: 'lightning', x1: struct.x, y1: struct.y, x2: target.x, y2: target.y, expires: currentFrameTime + 150 });
+            // ISOLATED LOGIC SO NOTHING SKIPS
+            if (struct.type === 'tesla') {
+                if (currentFrameTime - struct.lastTick > 2000) {
+                    const inRange = enemies.filter(e => Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius);
+                    if (inRange.length > 0) {
+                        const target = inRange[Math.floor(Math.random() * inRange.length)];
+                        target.hp -= teslaDamage; 
+                        if (target.hp <= 0) target.dead = true;
+                        struct.lastTick = currentFrameTime;
+                        visualEffects.push({ type: 'lightning', x1: struct.x, y1: struct.y, x2: target.x, y2: target.y, expires: currentFrameTime + 150 });
+                    }
                 }
             } else if (struct.type === 'plague') {
                 enemies.forEach(e => {
                     if (Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) e.poisoned = true;
                 });
-            } else if (struct.type === 'mending' && currentFrameTime - struct.lastTick > mendingCooldown) { 
-                if (health < maxHealth) { health++; updateHealthUI(); }
-                struct.lastTick = currentFrameTime;
+            } else if (struct.type === 'mending') {
+                if (currentFrameTime - struct.lastTick > mendingCooldown) { 
+                    if (health < maxHealth) { health++; updateHealthUI(); }
+                    struct.lastTick = currentFrameTime;
+                }
             }
         }
 
@@ -563,6 +561,7 @@ function animate() {
         for (let i = enemies.length - 1; i >= 0; i--) {
             const e = enemies[i];
 
+            // HUGE DAMAGE BUFF (0.2 instead of 0.05)
             if (e.poisoned) { e.hp -= 0.05; if (e.hp <= 0) e.dead = true; }
 
             if (e.dead) {
@@ -652,8 +651,16 @@ function animate() {
         ctx.fillStyle = '#76ff03'; ctx.fillRect(-bW/2, bO, bW * (e.hp / e.maxHp), 4); 
         ctx.rotate(Math.atan2(player.y - e.y, player.x - e.x)); 
         
+        // POISON AURA (Draws a translucent bubble around infected zombies)
+        if (e.poisoned) {
+            ctx.fillStyle = 'rgba(27, 94, 32, 0.6)';
+            ctx.beginPath(); ctx.arc(0, 0, e.radius + 6, 0, Math.PI * 2); ctx.fill();
+        }
+
         const baseColor = e.isBoss ? '#4a148c' : '#4caf50';
-        ctx.fillStyle = e.poisoned ? '#b2ff59' : baseColor; 
+        
+        // FORCED DARK GREEN POISON COLOR
+        ctx.fillStyle = e.poisoned ? '#1b5e20' : baseColor; 
         ctx.strokeStyle = e.isBoss ? '#12005e' : '#1b5e20'; 
         ctx.lineWidth = 2;
         
