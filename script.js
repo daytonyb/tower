@@ -494,10 +494,11 @@ function animate() {
                     struct.lastTick = currentFrameTime;
                     visualEffects.push({ type: 'lightning', x1: struct.x, y1: struct.y, x2: target.x, y2: target.y, expires: currentFrameTime + 150 });
                 }
-                } else if (struct.type === 'plague') {
-                    ctx.fillStyle = '#1b5e20'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.fill();
-                    ctx.fillStyle = 'rgba(27, 94, 32, 0.2)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
-                } else if (struct.type === 'mending' && currentFrameTime - struct.lastTick > mendingCooldown) { 
+            } else if (struct.type === 'plague') {
+                enemies.forEach(e => {
+                    if (Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) e.poisoned = true;
+                });
+            } else if (struct.type === 'mending' && currentFrameTime - struct.lastTick > mendingCooldown) { 
                 if (health < maxHealth) { health++; updateHealthUI(); }
                 struct.lastTick = currentFrameTime;
             }
@@ -519,8 +520,8 @@ function animate() {
             ctx.fillStyle = '#00e5ff'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill();
             ctx.fillStyle = 'rgba(0, 229, 255, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
         } else if (struct.type === 'plague') {
-            ctx.fillStyle = '#00c853'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.fill();
-            ctx.fillStyle = 'rgba(0, 200, 83, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#1b5e20'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.fill();
+            ctx.fillStyle = 'rgba(27, 94, 32, 0.2)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
         } else if (struct.type === 'soul') {
             ctx.fillStyle = '#aa00ff'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.fill();
             ctx.fillStyle = 'rgba(170, 0, 255, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
