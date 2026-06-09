@@ -259,6 +259,14 @@ function togglePauseMenu() {
 function triggerGameOver() {
     isGameStarted = false; 
     clearTimeout(spawnTimer);
+    
+    // Death Penalty: Subtract 1 Gold, prevent dropping below 0
+    if (savedData.gold > 0) {
+        savedData.gold = Math.max(0, savedData.gold - 1);
+        saveGame();
+        updateGoldUI();
+    }
+
     document.getElementById('finalLevelEl').innerText = level;
     document.getElementById('finalTimeEl').innerText = formattedTime;
     document.getElementById('runGoldEl').innerText = runGold;
@@ -343,6 +351,16 @@ function buyUpgrade(key, cost) {
         saveGame();
         updateGoldUI();
         populateShop(); 
+    }
+}
+
+// Function to refresh shop contents for 1 gold
+function refreshShop() {
+    if (savedData.gold >= 1) {
+        savedData.gold -= 1;
+        saveGame();
+        updateGoldUI();
+        populateShop();
     }
 }
 
