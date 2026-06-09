@@ -6,63 +6,126 @@ const xpBarFill = document.getElementById('xpBarFill');
 const timerDisplay = document.getElementById('timerDisplay');
 const goldEl = document.getElementById('goldEl');
 
-const levelUpModal = document.getElementById('levelUpModal');
-const levelUpContainer = document.getElementById('levelUpContainer');
 const mainMenu = document.getElementById('mainMenu');
+const pauseMenu = document.getElementById('pauseMenu');
 const gameOverModal = document.getElementById('gameOverModal');
+const levelUpModal = document.getElementById('levelUpModal');
+
+const levelUpContainer = document.getElementById('levelUpContainer');
 const shopContainer = document.getElementById('shopContainer');
-const controlsTip = document.getElementById('controlsTip');
 const ammoContainer = document.getElementById('ammoContainer');
+const controlsTip = document.getElementById('controlsTip');
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// --- ROGUELITE METAPROGRESSION SYSTEM ---
-const UPGRADE_DATA = {
-    deepPockets: { name: "Deep Pockets", desc: "+1 Max Ammo.", baseCost: 3, maxLevel: 5 },
-    arcaneHaste: { name: "Arcane Haste", desc: "Faster Ammo Recharge.", baseCost: 2, maxLevel: 5 },
-    volatileEmbers: { name: "Volatile Embers", desc: "+10% Blast Radius.", baseCost: 5, maxLevel: 5 },
-    reinforcedWood: { name: "Reinforced Wood", desc: "+50 Barricade HP.", baseCost: 2, maxLevel: 5 },
-    viscousTar: { name: "Viscous Tar", desc: "Tar slows zombies more.", baseCost: 3, maxLevel: 3 },
-    serratedWire: { name: "Serrated Wire", desc: "+2 Wire Damage.", baseCost: 1, maxLevel: 5 },
-    highVoltage: { name: "High Voltage", desc: "+10 Tesla Rune Damage.", baseCost: 3, maxLevel: 5 },
-    toxicSpores: { name: "Toxic Spores", desc: "+20 Plague Totem Radius.", baseCost: 2, maxLevel: 5 },
-    deepSiphon: { name: "Deep Siphon", desc: "+0.5x Soul Siphon XP.", baseCost: 4, maxLevel: 4 },
-    blessedAura: { name: "Blessed Aura", desc: "Mending Ward heals faster.", baseCost: 3, maxLevel: 4 },
-    masonry: { name: "Masonry", desc: "+10 Max Tower Health.", baseCost: 1, maxLevel: 10 },
-    scholarsInsight: { name: "Scholar's Insight", desc: "+5% XP gain.", baseCost: 4, maxLevel: 5 },
-    headStart: { name: "Head Start", desc: "Start at a higher level.", baseCost: 10, maxLevel: 3 }
-};
+// --- MENU & SAVE SYSTEM ---
+let currentSaveSlot = null;
+let savedData = {};
 
-// --- ALL AVAILABLE BLUEPRINTS ---
-const BLUEPRINT_DB = {
-    barricade: { name: 'Wooden Barricade', desc: 'Blocks zombies. They must destroy it to pass.' },
-    tar: { name: 'Tar Pit', desc: 'A sticky trap. Slows zombies by 70% while they walk through it.' },
-    wire: { name: 'Barbed Wire', desc: 'Zombies walk through it but take 5-10 damage.' },
-    tesla: { name: 'Tesla Rune', desc: 'Automatically zaps one nearby zombie every 2 seconds.' },
-    plague: { name: 'Plague Totem', desc: 'Emits a toxic aura. Permanently poisons any zombie that enters.' },
-    soul: { name: 'Soul Siphon', desc: 'Zombies that die within its aura grant bonus experience points.' },
-    mending: { name: 'Mending Ward', desc: 'A fragile statue that slowly repairs your tower over time.' }
-};
-
-let savedData = JSON.parse(localStorage.getItem('roR_save')) || {
-    gold: 0,
-    upgrades: { 
-        deepPockets: 0, arcaneHaste: 0, volatileEmbers: 0, 
-        reinforcedWood: 0, viscousTar: 0, serratedWire: 0, 
-        highVoltage: 0, toxicSpores: 0, deepSiphon: 0, blessedAura: 0,
-        masonry: 0, scholarsInsight: 0, headStart: 0 
-    }
-};
-
-// Sync missing keys for older saves
-for (let key in UPGRADE_DATA) {
-    if (savedData.upgrades[key] === undefined) savedData.upgrades[key] = 0;
+function switchMenuTab(tabId, buttonElement) {
+    document.querySelectorAll('.menu-tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.menu-tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    buttonElement.classList.add('active');
 }
 
-function saveGame() { localStorage.setItem('roR_save', JSON.stringify(savedData)); }
+function showSaveSelect() {
+    // Refresh the text on the save buttons
+    for (let i = 1; i <= 3; i++) {
+        let s = JSON.parse(localStorage.getItem('roR_save_' + i));
+        let btn = document.getElementById('saveBtn' + i);
+        if (s) btn.innerText = `SAVE ${i} (Gold: ${s.gold})`;
+        else btn.innerText = `SAVE ${i} (Empty)`;
+    }
+    
+    // Switch views to the Initial Screen
+    document.getElementById('saveSelectState').style.display = 'block';
+    document.getElementById('runReadyState').style.display = 'none';
+    
+    // Show Credits/Patch Notes, hide Shop
+    document.getElementById('btnTabPatch').style.display = 'block';
+    document.getElementById('btnTabCredits').style.display = 'block';
+    document.getElementById('btnTabShop').style.display = 'none'; 
+    
+    // Ensure we are on the 'Play' tab
+    switchMenuTab('tab-start', document.getElementById('btnTabStart'));
+    
+    currentSaveSlot = null;
+}
 
-// Run Variables
+function loadSaveSlot(slotIndex) {
+    currentSaveSlot = slotIndex;
+    savedData = JSON.parse(localStorage.getItem('roR_save_' + slotIndex)) || {
+        gold: 0,
+        upgrades: { deepPockets: 0, arcaneHaste: 0, volatileEmbers: 0, reinforcedWood: 0, viscousTar: 0, serratedWire: 0, highVoltage: 0, toxicSpores: 0, deepSiphon: 0, blessedAura: 0, masonry: 0, scholarsInsight: 0, headStart: 0 }
+    };
+    
+    for (let key in UPGRADE_DATA) {
+        if (savedData.upgrades[key] === undefined) savedData.upgrades[key] = 0;
+    }
+    
+    saveGame();
+    updateGoldUI();
+    populateShop();
+
+    document.getElementById('currentSaveDisplay').innerText = slotIndex;
+    
+    // Switch the view to the Hub
+    document.getElementById('saveSelectState').style.display = 'none';
+    document.getElementById('runReadyState').style.display = 'block';
+    
+    // Unlock the shop, Hide Patch Notes & Credits
+    document.getElementById('btnTabShop').style.display = 'block'; 
+    document.getElementById('btnTabPatch').style.display = 'none';
+    document.getElementById('btnTabCredits').style.display = 'none';
+}
+
+function saveGame() {
+    if (currentSaveSlot) localStorage.setItem('roR_save_' + currentSaveSlot, JSON.stringify(savedData));
+}
+
+function deleteSave() {
+    if (confirm("Are you sure you want to delete THIS save file? This cannot be undone.")) {
+        localStorage.removeItem('roR_save_' + currentSaveSlot);
+        showSaveSelect(); // Kick them back to the select screen
+    }
+}
+
+function updateGoldUI() {
+    goldEl.innerText = savedData.gold;
+    const hubGold = document.getElementById('hubTotalGoldEl');
+    if (hubGold) hubGold.innerText = savedData.gold;
+}
+
+// --- METAPROGRESSION DATA ---
+const UPGRADE_DATA = {
+    deepPockets: { name: "Deep Pockets", desc: "+1 Max Ammo.", baseCost: 3, maxLevel: 5 },
+    arcaneHaste: { name: "Arcane Haste", desc: "Faster Recharge.", baseCost: 2, maxLevel: 5 },
+    volatileEmbers: { name: "Volatile Embers", desc: "+10% Radius.", baseCost: 5, maxLevel: 5 },
+    reinforcedWood: { name: "Reinforced Wood", desc: "+50 Wood HP.", baseCost: 2, maxLevel: 5 },
+    viscousTar: { name: "Viscous Tar", desc: "More Tar slow.", baseCost: 3, maxLevel: 3 },
+    serratedWire: { name: "Serrated Wire", desc: "+2 Wire Dmg.", baseCost: 1, maxLevel: 5 },
+    highVoltage: { name: "High Voltage", desc: "+10 Tesla Dmg.", baseCost: 3, maxLevel: 5 },
+    toxicSpores: { name: "Toxic Spores", desc: "+20 Plague Rad.", baseCost: 2, maxLevel: 5 },
+    deepSiphon: { name: "Deep Siphon", desc: "+0.5x XP Boost.", baseCost: 4, maxLevel: 4 },
+    blessedAura: { name: "Blessed Aura", desc: "Faster Healing.", baseCost: 3, maxLevel: 4 },
+    masonry: { name: "Masonry", desc: "+10 Tower HP.", baseCost: 1, maxLevel: 10 },
+    scholarsInsight: { name: "Scholar", desc: "+5% XP gain.", baseCost: 4, maxLevel: 5 },
+    headStart: { name: "Head Start", desc: "Skip early levels.", baseCost: 10, maxLevel: 3 }
+};
+
+const BLUEPRINT_DB = {
+    barricade: { name: 'Wood Wall', desc: 'Blocks zombies.' },
+    tar: { name: 'Tar Pit', desc: 'Slows zombies.' },
+    wire: { name: 'Barbed Wire', desc: 'Damages zombies.' },
+    tesla: { name: 'Tesla Rune', desc: 'Zaps nearby zombies.' },
+    plague: { name: 'Plague Totem', desc: 'Poisons zombies.' },
+    soul: { name: 'Soul Siphon', desc: 'Bonus XP nearby.' },
+    mending: { name: 'Mending Ward', desc: 'Heals the tower.' }
+};
+
+// --- RUN VARIABLES ---
 let maxHealth, health, maxAmmo, currentAmmo, rechargeRate, maxBlastRadius;
 let barricadeHP, tarSpeedMod, wireDamageBonus, teslaDamage, plagueRadius, soulMultiplier, mendingCooldown, xpMultiplier;
 let animationId, isPaused = false, isGameStarted = false; 
@@ -70,20 +133,12 @@ let survivalTimeMs = 0, lastFrameTime = Date.now(), formattedTime = "00:00";
 let level = 1, xp = 0, xpToNextLevel = 100, lastBossLevel = 0; 
 let killCount = 0, runGold = 0;
 
-let currentBlueprint = null; 
-let blueprintAngle = 0; 
-const structures = []; 
+let currentBlueprint = null, blueprintAngle = 0; 
+const structures = [], spells = [], enemies = [], visualEffects = []; 
 let lastRechargeTime = 0;
 const restrictedRadius = 120; 
-
-let spawnTimer;
-let mouseX = canvas.width / 2;
-let mouseY = canvas.height / 2;
+let spawnTimer, mouseX = canvas.width / 2, mouseY = canvas.height / 2;
 const player = { x: canvas.width / 2, y: canvas.height / 2 };
-
-const spells = []; 
-const enemies = [];
-const visualEffects = []; 
 
 function applyUpgrades() {
     maxHealth = 100 + (savedData.upgrades.masonry * 10);
@@ -95,13 +150,10 @@ function applyUpgrades() {
     barricadeHP = 150 + (savedData.upgrades.reinforcedWood * 50);
     tarSpeedMod = 0.3 - (savedData.upgrades.viscousTar * 0.05); 
     wireDamageBonus = savedData.upgrades.serratedWire * 2;
-    
-    // New Structure Upgrades
     teslaDamage = 20 + (savedData.upgrades.highVoltage * 10);
     plagueRadius = 120 + (savedData.upgrades.toxicSpores * 20);
     soulMultiplier = 2 + (savedData.upgrades.deepSiphon * 0.5);
     mendingCooldown = 2000 - (savedData.upgrades.blessedAura * 250);
-
     xpMultiplier = 1 + (savedData.upgrades.scholarsInsight * 0.05);
     level = 1 + savedData.upgrades.headStart;
     
@@ -119,12 +171,7 @@ function updateAmmoUI() {
     }
 }
 
-function updateGoldUI() {
-    goldEl.innerText = savedData.gold;
-    document.getElementById('totalGoldEl').innerText = savedData.gold;
-}
-
-// --- GAME STATE LOGIC ---
+// --- GAME STATE FLOW ---
 function startGame() {
     applyUpgrades();
     updateAmmoUI();
@@ -138,27 +185,62 @@ function startGame() {
 
 function resetGame() {
     gameOverModal.style.display = 'none';
-    mainMenu.style.display = 'flex';
+    pauseMenu.style.display = 'none';
+    
+    // Automatically force the menu back to the 'Play' tab when returning to the hub
+    switchMenuTab('tab-start', document.getElementById('btnTabStart'));
+    mainMenu.style.display = 'flex'; 
+    
     isGameStarted = false;
+    isPaused = false;
+    
     survivalTimeMs = 0;
     formattedTime = "00:00";
     timerDisplay.innerText = formattedTime;
-    xp = 0;
-    lastBossLevel = 0;
-    killCount = 0;
-    runGold = 0;
-    enemies.length = 0;
-    spells.length = 0;
-    structures.length = 0;
-    visualEffects.length = 0;
+    xp = 0; lastBossLevel = 0; killCount = 0; runGold = 0;
+    enemies.length = 0; spells.length = 0; structures.length = 0; visualEffects.length = 0;
     
     applyUpgrades(); 
     xpBarFill.style.width = '0%';
     xpText.innerHTML = `${xp} / ${xpToNextLevel}`;
     updateAmmoUI();
-    animate();
+    updateGoldUI();
+    populateShop();
 }
 
+function togglePauseMenu() {
+    if (!isGameStarted || gameOverModal.style.display === 'flex' || levelUpModal.style.display === 'flex') return;
+
+    if (pauseMenu.style.display === 'flex') {
+        pauseMenu.style.display = 'none';
+        isPaused = false;
+        canvas.style.cursor = 'none';
+        lastFrameTime = Date.now(); 
+        spawnWave();
+    } else {
+        isPaused = true;
+        clearTimeout(spawnTimer);
+        pauseMenu.style.display = 'flex';
+        canvas.style.cursor = 'default';
+    }
+}
+
+function triggerGameOver() {
+    cancelAnimationFrame(animationId);
+    clearTimeout(spawnTimer);
+    document.getElementById('finalLevelEl').innerText = level;
+    document.getElementById('finalTimeEl').innerText = formattedTime;
+    document.getElementById('runGoldEl').innerText = runGold;
+    gameOverModal.style.display = 'flex';
+    canvas.style.cursor = 'default';
+}
+
+function updateHealthUI() {
+    health = Math.min(maxHealth, Math.max(0, health)); 
+    if (health <= 0) triggerGameOver();
+}
+
+// --- SHOP LOGIC ---
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -166,8 +248,8 @@ function shuffleArray(array) {
     }
 }
 
-// --- SHOP LOGIC ---
 function populateShop() {
+    if (!shopContainer) return;
     shopContainer.innerHTML = '';
     let availableUpgrades = Object.keys(UPGRADE_DATA).filter(k => savedData.upgrades[k] < UPGRADE_DATA[k].maxLevel);
     
@@ -189,9 +271,9 @@ function populateShop() {
         card.className = 'upgrade-card';
         card.innerHTML = `
             <div>
-                <h3 style="margin-top: 0; color: #4a90e2;">${data.name}</h3>
-                <p style="font-size: 14px; margin-bottom: 5px;">${data.desc}</p>
-                <p style="color: #ccc; font-size: 12px;">Level ${currentLvl} / ${data.maxLevel}</p>
+                <h3>${data.name}</h3>
+                <p>${data.desc}</p>
+                <p style="color: #ccc; font-size: 8px;">Level ${currentLvl} / ${data.maxLevel}</p>
             </div>
             <button class="buy-btn" ${canAfford ? '' : 'disabled'} onclick="buyUpgrade('${key}', ${cost})">
                 ${cost} Gold
@@ -211,26 +293,12 @@ function buyUpgrade(key, cost) {
     }
 }
 
-function triggerGameOver() {
-    cancelAnimationFrame(animationId);
-    clearTimeout(spawnTimer);
-    document.getElementById('finalLevelEl').innerText = level;
-    document.getElementById('finalTimeEl').innerText = formattedTime;
-    document.getElementById('runGoldEl').innerText = runGold;
-    populateShop(); 
-    gameOverModal.style.display = 'flex';
-    canvas.style.cursor = 'default';
-}
-
-function updateHealthUI() {
-    health = Math.min(maxHealth, Math.max(0, health)); 
-    if (health <= 0) triggerGameOver();
-}
-
 // --- INPUT LISTENERS ---
 window.addEventListener('mousemove', (event) => { mouseX = event.clientX; mouseY = event.clientY; });
 window.addEventListener('wheel', (event) => { if (currentBlueprint) blueprintAngle += event.deltaY > 0 ? 0.2 : -0.2; });
+
 window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') togglePauseMenu();
     if (currentBlueprint) {
         if (event.key.toLowerCase() === 'r') blueprintAngle += 0.2;
         if (event.key.toLowerCase() === 'e') blueprintAngle -= 0.2;
@@ -250,7 +318,7 @@ window.addEventListener('click', (event) => {
         else if (currentBlueprint === 'tar') { w = 120; h = 120; }
         else if (currentBlueprint === 'wire') { w = 150; h = 40; }
         else if (currentBlueprint === 'tesla') { w = 30; h = 30; radius = 150; }
-        else if (currentBlueprint === 'plague') { w = 30; h = 30; radius = plagueRadius; } // Uses scaled radius
+        else if (currentBlueprint === 'plague') { w = 30; h = 30; radius = plagueRadius; } 
         else if (currentBlueprint === 'soul') { w = 30; h = 30; radius = 150; hp = 50; }
         else if (currentBlueprint === 'mending') { w = 30; h = 30; hp = 50; }
 
@@ -259,6 +327,7 @@ window.addEventListener('click', (event) => {
         currentBlueprint = null; 
         controlsTip.style.display = 'none';
         isPaused = false; 
+        lastFrameTime = Date.now();
         spawnWave(); 
         return; 
     }
@@ -406,12 +475,10 @@ function animate() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. TOWER RESTRICTED ZONE
     ctx.beginPath(); ctx.arc(player.x, player.y, restrictedRadius, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(255, 0, 0, 0.05)'; ctx.fill();
     ctx.strokeStyle = 'rgba(255, 0, 0, 0.4)'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]); 
 
-    // 2. PLACED STRUCTURES 
     for (let i = structures.length - 1; i >= 0; i--) {
         const struct = structures[i];
         
@@ -420,7 +487,7 @@ function animate() {
                 const inRange = enemies.filter(e => Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius);
                 if (inRange.length > 0) {
                     const target = inRange[Math.floor(Math.random() * inRange.length)];
-                    target.hp -= teslaDamage; // Uses scaled damage
+                    target.hp -= teslaDamage; 
                     if (target.hp <= 0) target.dead = true;
                     struct.lastTick = currentFrameTime;
                     visualEffects.push({ type: 'lightning', x1: struct.x, y1: struct.y, x2: target.x, y2: target.y, expires: currentFrameTime + 150 });
@@ -429,11 +496,8 @@ function animate() {
                 enemies.forEach(e => {
                     if (Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) e.poisoned = true;
                 });
-            } else if (struct.type === 'mending' && currentFrameTime - struct.lastTick > mendingCooldown) { // Uses scaled cooldown
-                if (health < maxHealth) {
-                    health++;
-                    updateHealthUI();
-                }
+            } else if (struct.type === 'mending' && currentFrameTime - struct.lastTick > mendingCooldown) { 
+                if (health < maxHealth) { health++; updateHealthUI(); }
                 struct.lastTick = currentFrameTime;
             }
         }
@@ -468,7 +532,6 @@ function animate() {
         if (struct.hp <= 0) structures.splice(i, 1); 
     }
 
-    // 3. LOGIC (Zombies & Spells)
     if (!isPaused && isGameStarted) {
         spells.forEach((spell, index) => {
             if (spell.state === 'flying') {
@@ -498,25 +561,15 @@ function animate() {
         for (let i = enemies.length - 1; i >= 0; i--) {
             const e = enemies[i];
 
-            if (e.poisoned) {
-                e.hp -= 0.05; 
-                if (e.hp <= 0) e.dead = true;
-            }
+            if (e.poisoned) { e.hp -= 0.05; if (e.hp <= 0) e.dead = true; }
 
             if (e.dead) {
                 killCount++;
-                
-                if (e.isBoss) {
-                    savedData.gold += 2; runGold += 2; saveGame(); updateGoldUI();
-                } else if (killCount % 50 === 0) {
-                    savedData.gold += 1; runGold += 1; saveGame(); updateGoldUI();
-                }
+                if (e.isBoss) { savedData.gold += 2; runGold += 2; saveGame(); updateGoldUI(); } 
+                else if (killCount % 50 === 0) { savedData.gold += 1; runGold += 1; saveGame(); updateGoldUI(); }
 
                 let finalXp = e.xpDrop;
-                structures.forEach(s => {
-                    // Uses scaled multiplier
-                    if (s.type === 'soul' && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius) finalXp *= soulMultiplier; 
-                });
+                structures.forEach(s => { if (s.type === 'soul' && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius) finalXp *= soulMultiplier; });
 
                 addXp(finalXp); 
                 enemies.splice(i, 1);
@@ -529,9 +582,7 @@ function animate() {
             structures.forEach(struct => {
                 if (struct.type === 'tar') {
                     if (getCollisionData(e, struct).collided) speedModifier = tarSpeedMod;
-                } else if (struct.type === 'plague' || struct.type === 'tesla') {
-                    // No physical collision
-                } else {
+                } else if (struct.type !== 'plague' && struct.type !== 'tesla') {
                     const col = getCollisionData(e, struct);
                     if (col.collided) {
                         if (struct.type === 'wire') {
@@ -563,7 +614,6 @@ function animate() {
         }
     }
 
-    // 4. DRAW TOWER & HP BAR
     const tw = 60, th = 80;
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.beginPath(); ctx.ellipse(player.x, player.y + th/2, tw/2 + 10, 15, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#8a939e'; ctx.fillRect(player.x - tw/2, player.y - th/2, tw, th);
@@ -575,7 +625,6 @@ function animate() {
     ctx.fillStyle = '#e94560'; ctx.fillRect(hpX, hpY, hpW * (health / maxHealth), hpH);
     ctx.strokeStyle = 'white'; ctx.lineWidth = 1; ctx.strokeRect(hpX, hpY, hpW, hpH);
 
-    // 5. EXPLODING SPELLS 
     spells.forEach(spell => {
         if (spell.state === 'exploding') {
             ctx.fillStyle = `rgba(255, 69, 0, ${1 - (spell.radius / spell.maxRadius)})`;
@@ -583,13 +632,9 @@ function animate() {
         }
     });
 
-    // EFFECTS
     for (let i = visualEffects.length - 1; i >= 0; i--) {
         const effect = visualEffects[i];
-        if (currentFrameTime > effect.expires) {
-            visualEffects.splice(i, 1);
-            continue;
-        }
+        if (currentFrameTime > effect.expires) { visualEffects.splice(i, 1); continue; }
         if (effect.type === 'lightning') {
             ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(effect.x1, effect.y1);
             const midX = (effect.x1 + effect.x2) / 2 + (Math.random() - 0.5) * 20;
@@ -598,7 +643,6 @@ function animate() {
         }
     }
 
-    // 6. DRAW ZOMBIES
     enemies.forEach(e => {
         ctx.save(); ctx.translate(e.x, e.y); 
         const bW = e.isBoss ? 40 : 20, bO = e.isBoss ? -35 : -22;
@@ -619,14 +663,13 @@ function animate() {
         ctx.restore(); 
     });
 
-    // 7. RETICLE
     if (currentBlueprint) {
         let w = 40, h = 40, radius = 0;
         if (currentBlueprint === 'barricade') { w = 80; h = 20; }
         else if (currentBlueprint === 'tar') { w = 120; h = 120; }
         else if (currentBlueprint === 'wire') { w = 150; h = 40; }
         else if (currentBlueprint === 'tesla') { radius = 150; }
-        else if (currentBlueprint === 'plague') { radius = plagueRadius; } // Draw scaled radius
+        else if (currentBlueprint === 'plague') { radius = plagueRadius; } 
         else if (currentBlueprint === 'soul') { radius = 150; }
 
         ctx.save(); ctx.translate(mouseX, mouseY); ctx.rotate(blueprintAngle);
@@ -651,5 +694,5 @@ function animate() {
     }
 }
 
-applyUpgrades();
+showSaveSelect();
 animate();
