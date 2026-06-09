@@ -141,6 +141,7 @@ let animationId, isPaused = false, isGameStarted = false;
 let survivalTimeMs = 0, lastFrameTime = Date.now(), formattedTime = "00:00";
 let level = 1, xp = 0, xpToNextLevel = 100, lastBossLevel = 0; 
 let killCount = 0, runGold = 0;
+let nextBossTime = 300000; // 5 minutes in milliseconds
 
 let bossesKilled = 0;
 let crystalsSpawned = false;
@@ -162,7 +163,7 @@ function applyUpgrades() {
     rechargeRate = 500 - (savedData.upgrades.arcaneHaste * 25);
     maxBlastRadius = 45 * (1 + (savedData.upgrades.volatileEmbers * 0.1));
     barricadeHP = 150 + (savedData.upgrades.reinforcedWood * 50);
-    tarSpeedMod = 0.3 - (savedData.upgrades.viscousTar * 0.05); 
+    tarSpeedMod = 0.5 - (savedData.upgrades.viscousTar * 0.05); 
     wireDamageBonus = savedData.upgrades.serratedWire * 2;
     teslaDamage = 20 + (savedData.upgrades.highVoltage * 10);
     plagueRadius = 120 + (savedData.upgrades.toxicSpores * 20);
@@ -224,6 +225,7 @@ function resetGame() {
     crystals.length = 0;
     
     survivalTimeMs = 0;
+    nextBossTime = 300000;
     formattedTime = "00:00";
     timerDisplay.innerText = formattedTime;
     xp = 0; lastBossLevel = 0; killCount = 0; runGold = 0;
@@ -443,6 +445,15 @@ function addXp(amount) {
 }
 
 // --- ENEMY SPAWNING ---
+function spawnBossEnemy() {
+    const angle = Math.random() * Math.PI * 2;
+    const x = player.x + Math.cos(angle) * (canvas.width / 2 + 100);
+    const y = player.y + Math.sin(angle) * (canvas.height / 2 + 100);
+    
+    const bossHp = 80 + (level * 15); 
+    enemies.push({ x, y, radius: 35, baseSpeed: 0.08, hp: bossHp, maxHp: bossHp, xpDrop: 200 + (level * 50), dead: false, isBoss: true, poisoned: false, charmed: false });
+}
+
 function spawnWave() {
     if (isPaused || !isGameStarted) return;
 
@@ -450,16 +461,11 @@ function spawnWave() {
     
     if (level % 5 === 0 && lastBossLevel !== level) {
         lastBossLevel = level;
-        const angle = Math.random() * Math.PI * 2;
-        const x = player.x + Math.cos(angle) * (canvas.width / 2 + 100);
-        const y = player.y + Math.sin(angle) * (canvas.height / 2 + 100);
-        
-        const bossHp = 80 + (level * 10); 
-        enemies.push({ x, y, radius: 35, baseSpeed: 0.08, hp: bossHp, maxHp: bossHp, xpDrop: 200 + (level * 50), dead: false, isBoss: true, poisoned: false, charmed: false });
+        spawnBossEnemy();
     } else {
-        const groupSize = Math.floor(Math.random() * (5 + Math.floor(level / 3))) + 3; 
-        const hpMultiplier = 1 + (level * 0.15);
-        const speedMultiplier = 1 + (level * 0.05);
+        const groupSize = Math.floor(Math.random() * (5 + Math.floor(level / 2))) + 3; 
+        const hpMultiplier = 1 + (level * 0.20);
+        const speedMultiplier = 1 + (level * 0.08);
 
         let groupX, groupY;
         if (Math.random() < 0.5) {
@@ -517,6 +523,12 @@ function animate() {
         const totalSeconds = Math.floor(survivalTimeMs / 1000);
         formattedTime = `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`;
         timerDisplay.innerText = formattedTime;
+
+        // Check for 5-minute timer boss spawn
+        if (survivalTimeMs >= nextBossTime) {
+            nextBossTime += 300000;
+            spawnBossEnemy();
+        }
 
         if (currentAmmo < maxAmmo && currentFrameTime - lastRechargeTime >= rechargeRate) {
             currentAmmo++;
@@ -672,7 +684,7 @@ function animate() {
                     savedData.gold += 2 + bossGoldBonus; runGold += 2 + bossGoldBonus; saveGame(); updateGoldUI(); 
                     bossesKilled++; 
                     
-                    if (bossesKilled === 5 && !crystalsSpawned) {
+                    if (bossesKilled === 10 && !crystalsSpawned) {
                         crystalsSpawned = true;
                         spawnCrystals();
                     }
