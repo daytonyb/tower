@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ramparts of Ruin</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <p id="timerDisplay">00:00</p>
+
+    <div id="ui">
+        <p style="color: #ffd700; margin-top: 0;">Gold: <span id="goldEl">0</span></p>
+        
+        <div class="bar-container">
+            <div id="xpBarFill" class="bar-fill xp-fill"></div>
+            <span class="bar-text">XP: <span id="xpText">0 / 100</span></span>
+        </div>
+        <p id="controlsTip" style="display: none; color: #4a90e2; font-size: 16px;">Scroll Wheel or 'R' / 'E' to Rotate</p>
+    </div>
+
+    <div id="ammoContainer"></div>
+
+    <div id="mainMenu">
+        <div class="menu-content">
+            <h1 class="game-title">RAMPARTS OF RUIN</h1>
+            <p class="subtitle">Defend the spire. Place traps. Survive the horde.</p>
+            <button class="start-btn" onclick="startGame()">START GAME</button>
+        </div>
+    </div>
+
+    <div id="gameOverModal">
+        <div class="modal-content" style="max-width: 900px;">
+            <h1 style="color: #ff0000; font-size: 50px; margin-top: 0; text-shadow: 0 0 15px red, 2px 2px 5px black;">GAME OVER</h1>
+            <div style="display: flex; justify-content: space-around; margin-bottom: 20px; font-size: 20px;">
+                <p>Level Reached: <strong style="color: #4a90e2;"><span id="finalLevelEl"></span></strong></p>
+                <p>Time Survived: <strong style="color: #f1c40f;"><span id="finalTimeEl"></span></strong></p>
+                <p>Gold Earned: <strong style="color: #ffd700;">+<span id="runGoldEl"></span></strong></p>
+            </div>
+            <hr style="border-color: #e94560; margin-bottom: 20px;">
+            <h2 style="color: #ffd700; margin-bottom: 5px;">THE ARCHMAGE'S SHOP</h2>
+            <p style="color: #ccc; margin-top: 0; margin-bottom: 20px;">Total Gold: <strong style="color: #ffd700; font-size: 24px;"><span id="totalGoldEl"></span></strong></p>
+            <div id="shopContainer" class="card-container" style="margin-bottom: 30px;"></div>
+            <button class="start-btn" onclick="resetGame()">MAIN MENU</button>
+        </div>
+    </div>
+
+    <div id="levelUpModal">
+        <div class="modal-content">
+            <h2>LEVEL UP!</h2>
+            <p>Select a blueprint to place on the battlefield:</p>
+            <div id="levelUpContainer" class="card-container"></div>
+        </div>
+    </div>
+    
+    <canvas id="gameCanvas"></canvas>
+    <script src="script.js"></script>
+</body>
+</html>
