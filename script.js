@@ -15,6 +15,8 @@ const levelUpContainer = document.getElementById('levelUpContainer');
 const shopContainer = document.getElementById('shopContainer');
 const ammoContainer = document.getElementById('ammoContainer');
 const controlsTip = document.getElementById('controlsTip');
+const placementPhaseUI = document.getElementById('placementPhaseUI');
+const placementPhaseText = document.getElementById('placementPhaseText');
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
@@ -22,6 +24,7 @@ canvas.height = window.innerHeight;
 // --- MENU & SAVE SYSTEM ---
 let currentSaveSlot = null;
 let savedData = {};
+let lastPlaytimeSave = 0; 
 
 function switchMenuTab(tabId, buttonElement) {
     document.querySelectorAll('.menu-tab-content').forEach(c => c.classList.remove('active'));
@@ -44,6 +47,7 @@ function showSaveSelect() {
     document.getElementById('btnTabPatch').style.display = 'block';
     document.getElementById('btnTabCredits').style.display = 'block';
     document.getElementById('btnTabShop').style.display = 'none'; 
+    document.getElementById('btnTabPrestige').style.display = 'none';
     
     switchMenuTab('tab-start', document.getElementById('btnTabStart'));
     
@@ -59,16 +63,30 @@ function loadSaveSlot(slotIndex) {
             serratedWire: 0, highVoltage: 0, toxicSpores: 0, deepSiphon: 0, blessedAura: 0, 
             masonry: 0, scholarsInsight: 0, headStart: 0, 
             evocationMastery: 0, alchemistsTouch: 0, potentToxins: 0, splinteringWards: 0, arcaneFortitude: 0, mesmerizingGaze: 0 
-        }
+        },
+        prestigePoints: 0,
+        unclaimedPlaytime: 0,
+        unclaimedWins: 0,
+        totalPlaytime: 0,
+        totalDeaths: 0,
+        prestigeUpgrades: { permBarricade: 0, permTar: 0, permWire: 0, permTesla: 0, permPlague: 0, permSoul: 0, permMending: 0, permCharm: 0, trueEnding: 0, goldenEpoch: 0, arcaneRicochet: 0, vampiricStrike: 0, soulBattery: 0, bountyHunter: 0, ironbark: 0, livingWood: 0 }
     };
     
-    for (let key in UPGRADE_DATA) {
-        if (savedData.upgrades[key] === undefined) savedData.upgrades[key] = 0;
+    // Backwards compatibility 
+    for (let key in UPGRADE_DATA) { if (savedData.upgrades[key] === undefined) savedData.upgrades[key] = 0; }
+    if (savedData.prestigePoints === undefined) savedData.prestigePoints = 0;
+    if (savedData.unclaimedPlaytime === undefined) savedData.unclaimedPlaytime = 0;
+    if (savedData.unclaimedWins === undefined) savedData.unclaimedWins = 0;
+    if (savedData.totalPlaytime === undefined) savedData.totalPlaytime = 0;
+    if (savedData.totalDeaths === undefined) savedData.totalDeaths = 0;
+    if (savedData.prestigeUpgrades === undefined || savedData.prestigeUpgrades.permBarricade === undefined) {
+        savedData.prestigeUpgrades = { permBarricade: 0, permTar: 0, permWire: 0, permTesla: 0, permPlague: 0, permSoul: 0, permMending: 0, permCharm: 0, trueEnding: 0, goldenEpoch: 0, arcaneRicochet: 0, vampiricStrike: 0, soulBattery: 0, bountyHunter: 0, ironbark: 0, livingWood: 0 };
     }
     
     saveGame();
     updateGoldUI();
     populateShop();
+    updatePrestigeUI();
 
     document.getElementById('currentSaveDisplay').innerText = slotIndex;
     
@@ -76,6 +94,7 @@ function loadSaveSlot(slotIndex) {
     document.getElementById('runReadyState').style.display = 'block';
     
     document.getElementById('btnTabShop').style.display = 'block'; 
+    document.getElementById('btnTabPrestige').style.display = 'block'; 
     document.getElementById('btnTabPatch').style.display = 'none';
     document.getElementById('btnTabCredits').style.display = 'none';
 }
@@ -112,13 +131,31 @@ const UPGRADE_DATA = {
     masonry: { name: "Masonry", desc: "+10 Tower HP.", baseCost: 1, maxLevel: 10 },
     scholarsInsight: { name: "Scholar", desc: "+5% XP gain.", baseCost: 4, maxLevel: 5 },
     headStart: { name: "Head Start", desc: "Skip early levels.", baseCost: 10, maxLevel: 3 },
-    
     evocationMastery: { name: "Evocation", desc: "+2 Click Dmg.", baseCost: 3, maxLevel: 5 },
     alchemistsTouch: { name: "Alchemist", desc: "Better gold drops.", baseCost: 5, maxLevel: 3 },
     potentToxins: { name: "Potent Toxins", desc: "More Poison Dmg.", baseCost: 4, maxLevel: 5 },
     splinteringWards: { name: "Splinter Wards", desc: "Exploding walls.", baseCost: 5, maxLevel: 3 },
     arcaneFortitude: { name: "Arcane Fort", desc: "+25 Trap HP.", baseCost: 2, maxLevel: 5 },
     mesmerizingGaze: { name: "Mesmerize", desc: "-1s Charm CD.", baseCost: 5, maxLevel: 5 }
+};
+
+const PRESTIGE_UPGRADE_DATA = {
+    permBarricade: { name: "Eternal Wall", desc: "Start with Wood Walls.", cost: 2, maxLevel: 4, type: 'barricade' },
+    permTar: { name: "Eternal Tar", desc: "Start with Tar Pits.", cost: 3, maxLevel: 4, type: 'tar' },
+    permWire: { name: "Eternal Wire", desc: "Start with Barbed Wire.", cost: 3, maxLevel: 4, type: 'wire' },
+    permTesla: { name: "Genesis Spark", desc: "Start with Tesla Runes.", cost: 5, maxLevel: 4, type: 'tesla' },
+    permPlague: { name: "Eternal Plague", desc: "Start with Plague Totems.", cost: 5, maxLevel: 4, type: 'plague' },
+    permSoul: { name: "Eternal Soul", desc: "Start with Soul Siphons.", cost: 5, maxLevel: 4, type: 'soul' },
+    permMending: { name: "Aura of Life", desc: "Start with Mending Wards.", cost: 5, maxLevel: 4, type: 'mending' },
+    permCharm: { name: "Eternal Mind", desc: "Start with Mind Wards.", cost: 5, maxLevel: 4, type: 'charm' },
+    goldenEpoch: { name: "Golden Epoch", desc: "Start runs with +2 Gold per level.", cost: 5, maxLevel: 5 },
+    arcaneRicochet: { name: "Arcane Ricochet", desc: "Spells bounce to +1 enemy per level.", cost: 8, maxLevel: 3 },
+    vampiricStrike: { name: "Vampiric Strike", desc: "Spell kills have +2% chance to heal 1 HP.", cost: 6, maxLevel: 5 },
+    soulBattery: { name: "Soul Battery", desc: "Soul Siphons reduce Ward CD by 5% per level.", cost: 7, maxLevel: 4 },
+    bountyHunter: { name: "Bounty Hunter", desc: "Boss kills yield +1 extra Gold per level.", cost: 5, maxLevel: 5 },
+    ironbark: { name: "Ironbark", desc: "Barricades reflect 1 dmg per level.", cost: 5, maxLevel: 5 },
+    livingWood: { name: "Living Wood", desc: "Barricades regen 5 HP/sec per level.", cost: 6, maxLevel: 5 },
+    trueEnding: { name: "The Truth", desc: "Unlock the final mystery...", cost: 100, maxLevel: 1 }
 };
 
 const BLUEPRINT_DB = {
@@ -137,11 +174,14 @@ let maxHealth, health, maxAmmo, currentAmmo, rechargeRate, maxBlastRadius;
 let barricadeHP, tarSpeedMod, wireDamageBonus, teslaDamage, plagueRadius, soulMultiplier, mendingCooldown, xpMultiplier;
 let spellDamageBonus, goldDropThreshold, bossGoldBonus, poisonTickDamage, barricadeExplosionDamage, wardHPBonus, charmCooldown;
 
-let animationId, isPaused = false, isGameStarted = false; 
+// Prestige Scaling Variables
+let goldenEpochBonus, ricochetBounces, vampiricChance, soulBatteryReduction, bountyHunterBonus, ironbarkDamage, livingWoodRegen;
+
+let animationId, isPaused = false, isGameStarted = false, isPlacingPerms = false; 
 let survivalTimeMs = 0, lastFrameTime = Date.now(), formattedTime = "00:00";
 let level = 1, xp = 0, xpToNextLevel = 100, lastBossLevel = 0; 
 let killCount = 0, runGold = 0;
-let nextBossTime = 300000; // 5 minutes in milliseconds
+let nextBossTime = 300000; 
 
 let bossesKilled = 0;
 let crystalsSpawned = false;
@@ -149,6 +189,7 @@ let victoryAchieved = false;
 const crystals = [];
 
 let currentBlueprint = null, blueprintAngle = 0; 
+let pendingPerms = [];
 const structures = [], spells = [], enemies = [], visualEffects = []; 
 let lastRechargeTime = 0;
 const restrictedRadius = 120; 
@@ -169,7 +210,7 @@ function applyUpgrades() {
     plagueRadius = 120 + (savedData.upgrades.toxicSpores * 20);
     soulMultiplier = 2 + (savedData.upgrades.deepSiphon * 0.5);
     mendingCooldown = 2000 - (savedData.upgrades.blessedAura * 250);
-    xpMultiplier = 1 + (savedData.upgrades.scholarsInsight * 0.05);
+    xpMultiplier = (1 + (savedData.upgrades.scholarsInsight * 0.05));
     level = 1 + savedData.upgrades.headStart;
     
     spellDamageBonus = savedData.upgrades.evocationMastery * 2;
@@ -179,6 +220,14 @@ function applyUpgrades() {
     barricadeExplosionDamage = savedData.upgrades.splinteringWards * 15;
     wardHPBonus = savedData.upgrades.arcaneFortitude * 25;
     charmCooldown = 10000 - (savedData.upgrades.mesmerizingGaze * 1000);
+
+    goldenEpochBonus = (savedData.prestigeUpgrades.goldenEpoch || 0) * 2;
+    ricochetBounces = (savedData.prestigeUpgrades.arcaneRicochet || 0);
+    vampiricChance = (savedData.prestigeUpgrades.vampiricStrike || 0) * 0.02;
+    soulBatteryReduction = (savedData.prestigeUpgrades.soulBattery || 0) * 0.05;
+    bountyHunterBonus = (savedData.prestigeUpgrades.bountyHunter || 0);
+    ironbarkDamage = (savedData.prestigeUpgrades.ironbark || 0);
+    livingWoodRegen = (savedData.prestigeUpgrades.livingWood || 0) * 5;
     
     xpToNextLevel = 100;
     for (let i = 1; i < level; i++) xpToNextLevel = Math.floor(xpToNextLevel * 1.4);
@@ -194,6 +243,98 @@ function updateAmmoUI() {
     }
 }
 
+// --- PRESTIGE SYSTEM LOGIC ---
+function updatePrestigeUI() {
+    if (!savedData) return;
+    document.getElementById('currentPPEl').innerText = savedData.prestigePoints;
+    
+    const totalMs = savedData.unclaimedPlaytime;
+    const hours = Math.floor(totalMs / 3600000);
+    const minutes = Math.floor((totalMs % 3600000) / 60000);
+    
+    document.getElementById('unclaimedTimeEl').innerText = `${hours}h ${minutes}m`;
+    document.getElementById('unclaimedWinsEl').innerText = savedData.unclaimedWins;
+    
+    const pending = (hours * 1) + (savedData.unclaimedWins * 2);
+    document.getElementById('pendingPPEl').innerText = pending;
+    
+    populatePrestigeShop();
+}
+
+function doPrestige() {
+    const hours = Math.floor(savedData.unclaimedPlaytime / 3600000);
+    const pending = (hours * 1) + (savedData.unclaimedWins * 2);
+    
+    if (pending <= 0) {
+        alert("You don't have any pending Prestige Points to claim! Play more or beat the game to earn points.");
+        return;
+    }
+
+    if (confirm(`Are you sure you want to Prestige?\n\nYou will gain ${pending} Prestige Points, but you will LOSE ALL your Gold and Standard Upgrades. Your save slot progress will reset.`)) {
+        savedData.prestigePoints += pending;
+        savedData.unclaimedPlaytime %= 3600000; 
+        savedData.unclaimedWins = 0;
+        
+        savedData.gold = 0; 
+        for (let key in UPGRADE_DATA) {
+            savedData.upgrades[key] = 0;
+        }
+        
+        saveGame();
+        updateGoldUI();
+        updatePrestigeUI();
+        populateShop();
+        alert("You have Prestiged! The Cosmic Altar smiles upon you.");
+    }
+}
+
+function populatePrestigeShop() {
+    const container = document.getElementById('prestigeContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    let availableKeys = Object.keys(PRESTIGE_UPGRADE_DATA).filter(k => k !== 'trueEnding');
+    
+    shuffleArray(availableKeys);
+    let selectedKeys = availableKeys.slice(0, 3);
+    selectedKeys.push('trueEnding');
+    
+    selectedKeys.forEach(key => {
+        const data = PRESTIGE_UPGRADE_DATA[key];
+        const currentLvl = savedData.prestigeUpgrades[key] || 0;
+        const canAfford = savedData.prestigePoints >= data.cost;
+        const isMaxed = currentLvl >= data.maxLevel;
+
+        const isTrueEnding = (key === 'trueEnding');
+
+        const card = document.createElement('div');
+        card.className = 'upgrade-card prestige-card';
+        if (isTrueEnding) card.classList.add('true-ending-card');
+
+        card.innerHTML = `
+            <div>
+                <h3>${data.name}</h3>
+                <p>${data.desc}</p>
+                <p style="color: #ccc; font-size: 8px;">Level ${currentLvl} / ${data.maxLevel}</p>
+            </div>
+            <button class="buy-btn prestige-btn" ${canAfford && !isMaxed ? '' : 'disabled'} onclick="buyPrestigeUpgrade('${key}')">
+                ${isMaxed ? 'MAX' : data.cost + ' PP'}
+            </button>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function buyPrestigeUpgrade(key) {
+    const data = PRESTIGE_UPGRADE_DATA[key];
+    if (savedData.prestigePoints >= data.cost && (savedData.prestigeUpgrades[key] || 0) < data.maxLevel) {
+        savedData.prestigePoints -= data.cost;
+        savedData.prestigeUpgrades[key] = (savedData.prestigeUpgrades[key] || 0) + 1;
+        saveGame();
+        updatePrestigeUI();
+    }
+}
+
 // --- GAME STATE FLOW ---
 function startGame() {
     applyUpgrades();
@@ -201,20 +342,76 @@ function startGame() {
     updateGoldUI();
     mainMenu.style.display = 'none'; 
     isGameStarted = true;
+    isPlacingPerms = false;
+    
+    structures.length = 0; 
+    pendingPerms = [];
+
+    for (let key in PRESTIGE_UPGRADE_DATA) {
+        if (PRESTIGE_UPGRADE_DATA[key].type) {
+            let amount = savedData.prestigeUpgrades[key] || 0;
+            for (let i = 0; i < amount; i++) {
+                pendingPerms.push(PRESTIGE_UPGRADE_DATA[key].type);
+            }
+        }
+    }
+
+    if (pendingPerms.length > 0) {
+        isPlacingPerms = true;
+        currentBlueprint = pendingPerms.shift();
+        
+        placementPhaseUI.style.display = 'block';
+        controlsTip.style.display = 'block';
+        updatePlacementText();
+    } else {
+        startActualRun();
+    }
+}
+
+function updatePlacementText() {
+    const typeName = BLUEPRINT_DB[currentBlueprint].name;
+    placementPhaseText.innerText = `Click to place your permanent ${typeName}.\n(${pendingPerms.length + 1} remaining)`;
+}
+
+function startActualRun() {
+    isPlacingPerms = false;
+    placementPhaseUI.style.display = 'none';
+    controlsTip.style.display = 'none';
+    
     lastRechargeTime = Date.now(); 
     lastFrameTime = Date.now(); 
+    lastPlaytimeSave = Date.now(); 
+    
+    if (goldenEpochBonus > 0) {
+        savedData.gold += goldenEpochBonus;
+        runGold += goldenEpochBonus;
+        saveGame();
+        updateGoldUI();
+    }
+
     spawnWave(); 
 }
 
 function resetGame() {
+    if (isGameStarted && !isPlacingPerms) {
+        let diff = Date.now() - lastPlaytimeSave;
+        savedData.unclaimedPlaytime += diff;
+        savedData.totalPlaytime += diff;
+        saveGame();
+        updatePrestigeUI();
+    }
+
     gameOverModal.style.display = 'none';
     pauseMenu.style.display = 'none';
     document.getElementById('victoryModal').style.display = 'none';
+    document.getElementById('trueVictoryModal').style.display = 'none';
+    placementPhaseUI.style.display = 'none';
     
     switchMenuTab('tab-start', document.getElementById('btnTabStart'));
     mainMenu.style.display = 'flex'; 
     
     isGameStarted = false;
+    isPlacingPerms = false;
     isPaused = false;
     currentBlueprint = null;
     controlsTip.style.display = 'none';
@@ -223,6 +420,7 @@ function resetGame() {
     crystalsSpawned = false;
     victoryAchieved = false;
     crystals.length = 0;
+    pendingPerms = [];
     
     survivalTimeMs = 0;
     nextBossTime = 300000;
@@ -240,19 +438,26 @@ function resetGame() {
 }
 
 function togglePauseMenu() {
-    if (!isGameStarted || gameOverModal.style.display === 'flex' || levelUpModal.style.display === 'flex' || document.getElementById('victoryModal').style.display === 'flex') return;
+    if (!isGameStarted || isPlacingPerms || gameOverModal.style.display === 'flex' || levelUpModal.style.display === 'flex' || document.getElementById('victoryModal').style.display === 'flex' || document.getElementById('trueVictoryModal').style.display === 'flex') return;
 
     if (pauseMenu.style.display === 'flex') {
         pauseMenu.style.display = 'none';
         isPaused = false;
         canvas.style.cursor = 'none';
         lastFrameTime = Date.now(); 
+        lastPlaytimeSave = Date.now(); 
         spawnWave();
     } else {
         isPaused = true;
         clearTimeout(spawnTimer);
         pauseMenu.style.display = 'flex';
         canvas.style.cursor = 'default';
+        
+        let diff = Date.now() - lastPlaytimeSave;
+        savedData.unclaimedPlaytime += diff;
+        savedData.totalPlaytime += diff;
+        saveGame();
+        updatePrestigeUI();
     }
 }
 
@@ -260,12 +465,17 @@ function triggerGameOver() {
     isGameStarted = false; 
     clearTimeout(spawnTimer);
     
-    // Death Penalty: Subtract 1 Gold, prevent dropping below 0
+    let diff = Date.now() - lastPlaytimeSave;
+    savedData.unclaimedPlaytime += diff;
+    savedData.totalPlaytime += diff;
+    savedData.totalDeaths += 1;
+    
     if (savedData.gold > 0) {
         savedData.gold = Math.max(0, savedData.gold - 1);
-        saveGame();
-        updateGoldUI();
     }
+    saveGame();
+    updateGoldUI();
+    updatePrestigeUI();
 
     document.getElementById('finalLevelEl').innerText = level;
     document.getElementById('finalTimeEl').innerText = formattedTime;
@@ -279,26 +489,21 @@ function updateHealthUI() {
     if (health <= 0) triggerGameOver();
 }
 
-function spawnCrystals() {
-    const crystalHp = (80 + (level * 10)) * 3; 
-    const corners = [
-        { x: 100, y: 100 },
-        { x: canvas.width - 100, y: 100 },
-        { x: 100, y: canvas.height - 100 },
-        { x: canvas.width - 100, y: canvas.height - 100 }
-    ];
-    
-    corners.forEach(pos => {
-        crystals.push({ x: pos.x, y: pos.y, radius: 35, hp: crystalHp, maxHp: crystalHp });
-    });
-}
+function spawnCrystals(phase = 1) {
+    let crystalHp = (80 + (level * 10)) * 3; 
+    if (phase === 2) crystalHp *= 1.5;
 
-function continueRun() {
-    document.getElementById('victoryModal').style.display = 'none';
-    isPaused = false;
-    canvas.style.cursor = 'none';
-    lastFrameTime = Date.now();
-    spawnWave();
+    const positions = [
+        { x: 100, y: 100 }, { x: canvas.width - 100, y: 100 },
+        { x: 100, y: canvas.height - 100 }, { x: canvas.width - 100, y: canvas.height - 100 }
+    ];
+
+    if (phase === 2) {
+        positions.push({ x: canvas.width / 2, y: 100 }); 
+        positions.push({ x: canvas.width / 2, y: canvas.height - 100 });
+    }
+
+    positions.forEach(pos => { crystals.push({ x: pos.x, y: pos.y, radius: 35, hp: crystalHp, maxHp: crystalHp }); });
 }
 
 // --- SHOP LOGIC ---
@@ -354,7 +559,6 @@ function buyUpgrade(key, cost) {
     }
 }
 
-// Function to refresh shop contents for 1 gold
 function refreshShop() {
     if (savedData.gold >= 1) {
         savedData.gold -= 1;
@@ -378,39 +582,20 @@ window.addEventListener('keydown', (event) => {
 
 // --- AUTO-RESIZE & SHIFT SCREEN ---
 window.addEventListener('resize', () => {
-    // Store the old dimensions before updating
-    const oldWidth = canvas.width;
-    const oldHeight = canvas.height;
+    const oldWidth = canvas.width; const oldHeight = canvas.height;
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    const diffX = (canvas.width - oldWidth) / 2; const diffY = (canvas.height - oldHeight) / 2;
     
-    // Update canvas to the new window size
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    player.x = canvas.width / 2; player.y = canvas.height / 2;
     
-    // Calculate how much the center of the screen moved
-    const diffX = (canvas.width - oldWidth) / 2;
-    const diffY = (canvas.height - oldHeight) / 2;
-    
-    // Snap the player exactly to the new center
-    player.x = canvas.width / 2;
-    player.y = canvas.height / 2;
-    
-    // Shift all existing entities by the difference so they don't jump around
     structures.forEach(s => { s.x += diffX; s.y += diffY; });
     enemies.forEach(e => { e.x += diffX; e.y += diffY; });
     crystals.forEach(c => { c.x += diffX; c.y += diffY; });
-    
-    spells.forEach(s => { 
-        s.startX += diffX; s.startY += diffY; 
-        s.targetX += diffX; s.targetY += diffY; 
-    });
-    
+    spells.forEach(s => { s.startX += diffX; s.startY += diffY; s.targetX += diffX; s.targetY += diffY; });
     visualEffects.forEach(v => {
         if (v.x !== undefined) v.x += diffX;
         if (v.y !== undefined) v.y += diffY;
-        if (v.x1 !== undefined) { 
-            v.x1 += diffX; v.x2 += diffX; 
-            v.y1 += diffY; v.y2 += diffY; 
-        }
+        if (v.x1 !== undefined) { v.x1 += diffX; v.x2 += diffX; v.y1 += diffY; v.y2 += diffY; }
     });
 });
 
@@ -432,17 +617,36 @@ window.addEventListener('click', (event) => {
         else if (currentBlueprint === 'mending') { w = 30; h = 30; hp = 50 + wardHPBonus; }
         else if (currentBlueprint === 'charm') { w = 30; h = 30; radius = 150; hp = 50 + wardHPBonus; }
 
-        structures.push({ type: currentBlueprint, x: event.clientX, y: event.clientY, w: w, h: h, angle: blueprintAngle, hp: hp, radius: radius, hitZombies: new Map(), lastTick: Date.now() });
+        let isPerm = isPlacingPerms;
+        if (isPerm) {
+            hp = 99999;
+            w = w * 0.75;
+            h = h * 0.75;
+            radius = Math.max(radius * 0.75, 50); 
+        }
 
-        currentBlueprint = null; 
-        controlsTip.style.display = 'none';
-        isPaused = false; 
-        lastFrameTime = Date.now();
-        spawnWave(); 
+        structures.push({ type: currentBlueprint, x: event.clientX, y: event.clientY, w: w, h: h, angle: blueprintAngle, hp: hp, radius: radius, hitZombies: new Map(), lastTick: Date.now(), isPermanent: isPerm });
+
+        if (isPlacingPerms) {
+            if (pendingPerms.length > 0) {
+                currentBlueprint = pendingPerms.shift();
+                updatePlacementText();
+            } else {
+                currentBlueprint = null;
+                startActualRun();
+            }
+        } else {
+            currentBlueprint = null; 
+            controlsTip.style.display = 'none';
+            isPaused = false; 
+            lastFrameTime = Date.now();
+            lastPlaytimeSave = Date.now();
+            spawnWave(); 
+        }
         return; 
     }
 
-    if (currentAmmo <= 0 || distFromTower <= restrictedRadius) return; 
+    if (currentAmmo <= 0 || distFromTower <= restrictedRadius || isPlacingPerms) return; 
 
     if (currentAmmo === maxAmmo) lastRechargeTime = Date.now();
     currentAmmo--;
@@ -451,15 +655,15 @@ window.addEventListener('click', (event) => {
     const distToTarget = Math.hypot(event.clientX - player.x, event.clientY - player.y);
     spells.push({
         startX: player.x, startY: player.y, targetX: event.clientX, targetY: event.clientY, distance: distToTarget,
-        progress: 0, arcHeight: Math.min(distToTarget * 0.4, 200), radius: 0, maxRadius: maxBlastRadius, state: 'flying', hitEnemies: new Set() 
+        progress: 0, arcHeight: Math.min(distToTarget * 0.4, 200), radius: 0, maxRadius: maxBlastRadius, state: 'flying', 
+        hitEnemies: new Set(), bounces: ricochetBounces, bounceHistory: new Set()
     });
 });
 
 // --- LEVEL UP LOGIC ---
 function selectBlueprint(type, event) {
     event.stopPropagation(); 
-    currentBlueprint = type;
-    blueprintAngle = 0; 
+    currentBlueprint = type; blueprintAngle = 0; 
     levelUpModal.style.display = 'none';
     canvas.style.cursor = 'none'; 
     controlsTip.style.display = 'block';
@@ -505,14 +709,12 @@ function spawnBossEnemy() {
     const angle = Math.random() * Math.PI * 2;
     const x = player.x + Math.cos(angle) * (canvas.width / 2 + 100);
     const y = player.y + Math.sin(angle) * (canvas.height / 2 + 100);
-    
     const bossHp = 80 + (level * 15); 
     enemies.push({ x, y, radius: 35, baseSpeed: 0.08, hp: bossHp, maxHp: bossHp, xpDrop: 200 + (level * 50), dead: false, isBoss: true, poisoned: false, charmed: false });
 }
 
 function spawnWave() {
-    if (isPaused || !isGameStarted) return;
-
+    if (isPaused || !isGameStarted || isPlacingPerms) return;
     const nextSpawnDelay = Math.random() * (7000 - 3000) + 3000;
     
     if (level % 5 === 0 && lastBossLevel !== level) {
@@ -557,8 +759,7 @@ function getCollisionData(circle, rect) {
     
     if (distanceSquared < circle.radius * circle.radius) {
         const distance = Math.sqrt(distanceSquared) || 0.1;
-        return { 
-            collided: true, overlap: circle.radius - distance, localX,
+        return { collided: true, overlap: circle.radius - distance, localX,
             normalX: (distX / distance) * Math.cos(rect.angle) - (distY / distance) * Math.sin(rect.angle), 
             normalY: (distX / distance) * Math.sin(rect.angle) + (distY / distance) * Math.cos(rect.angle) 
         };
@@ -574,22 +775,23 @@ function animate() {
     const deltaTime = currentFrameTime - lastFrameTime;
     lastFrameTime = currentFrameTime;
 
-    if (!isPaused && isGameStarted) {
+    if (!isPaused && isGameStarted && !isPlacingPerms) {
         survivalTimeMs += deltaTime;
         const totalSeconds = Math.floor(survivalTimeMs / 1000);
         formattedTime = `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`;
         timerDisplay.innerText = formattedTime;
-
-        // Check for 5-minute timer boss spawn
-        if (survivalTimeMs >= nextBossTime) {
-            nextBossTime += 300000;
-            spawnBossEnemy();
+        
+        if (currentFrameTime - lastPlaytimeSave >= 5000) {
+            let diff = currentFrameTime - lastPlaytimeSave;
+            savedData.unclaimedPlaytime += diff;
+            savedData.totalPlaytime += diff;
+            lastPlaytimeSave = currentFrameTime;
         }
 
+        if (survivalTimeMs >= nextBossTime) { nextBossTime += 300000; spawnBossEnemy(); }
+
         if (currentAmmo < maxAmmo && currentFrameTime - lastRechargeTime >= rechargeRate) {
-            currentAmmo++;
-            lastRechargeTime += rechargeRate; 
-            updateAmmoUI();
+            currentAmmo++; lastRechargeTime += rechargeRate; updateAmmoUI();
         }
     }
 
@@ -602,8 +804,14 @@ function animate() {
     for (let i = structures.length - 1; i >= 0; i--) {
         const struct = structures[i];
         
-        if (!isPaused && isGameStarted) {
-            if (struct.type === 'tesla') {
+        if (!isPaused && isGameStarted && !isPlacingPerms) {
+            if (struct.type === 'barricade' && livingWoodRegen > 0) {
+                if (!struct.lastRegenTick) struct.lastRegenTick = currentFrameTime;
+                if (currentFrameTime - struct.lastRegenTick >= 1000) {
+                    struct.hp = Math.min(struct.isPermanent ? 99999 : barricadeHP, struct.hp + livingWoodRegen);
+                    struct.lastRegenTick = currentFrameTime;
+                }
+            } else if (struct.type === 'tesla') {
                 if (currentFrameTime - struct.lastTick > 2000) {
                     const inRange = enemies.filter(e => !e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius);
                     if (inRange.length > 0) {
@@ -615,22 +823,31 @@ function animate() {
                     }
                 }
             } else if (struct.type === 'plague') {
-                enemies.forEach(e => {
-                    if (!e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) e.poisoned = true;
-                });
-            } else if (struct.type === 'mending') {
-                if (currentFrameTime - struct.lastTick > mendingCooldown) { 
-                    if (health < maxHealth) { health++; updateHealthUI(); }
-                    struct.lastTick = currentFrameTime;
+                enemies.forEach(e => { if (!e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) e.poisoned = true; });
+            } else if (struct.type === 'mending' || struct.type === 'charm') {
+                let localCdMult = 1;
+                if (soulBatteryReduction > 0) {
+                    structures.forEach(s => {
+                        if (s.type === 'soul' && Math.hypot(struct.x - s.x, struct.y - s.y) <= s.radius) {
+                            localCdMult -= soulBatteryReduction;
+                        }
+                    });
+                    localCdMult = Math.max(0.1, localCdMult); 
                 }
-            } else if (struct.type === 'charm') {
-                if (currentFrameTime - struct.lastTick > charmCooldown) {
-                    const inRange = enemies.filter(e => !e.charmed && !e.isBoss && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius);
-                    if (inRange.length > 0) {
-                        const target = inRange[Math.floor(Math.random() * inRange.length)];
-                        target.charmed = true;
+
+                if (struct.type === 'mending') {
+                    if (currentFrameTime - struct.lastTick > (mendingCooldown * localCdMult)) { 
+                        if (health < maxHealth) { health++; updateHealthUI(); }
                         struct.lastTick = currentFrameTime;
-                        visualEffects.push({ type: 'charm_beam', x1: struct.x, y1: struct.y, x2: target.x, y2: target.y, expires: currentFrameTime + 200 });
+                    }
+                } else if (struct.type === 'charm') {
+                    if (currentFrameTime - struct.lastTick > (charmCooldown * localCdMult)) {
+                        const inRange = enemies.filter(e => !e.charmed && !e.isBoss && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius);
+                        if (inRange.length > 0) {
+                            const target = inRange[Math.floor(Math.random() * inRange.length)];
+                            target.charmed = true; struct.lastTick = currentFrameTime;
+                            visualEffects.push({ type: 'charm_beam', x1: struct.x, y1: struct.y, x2: target.x, y2: target.y, expires: currentFrameTime + 200 });
+                        }
                     }
                 }
             }
@@ -639,37 +856,45 @@ function animate() {
         ctx.save(); ctx.translate(struct.x, struct.y); ctx.rotate(struct.angle);
 
         if (struct.type === 'barricade') {
-            ctx.fillStyle = '#8B4513'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
-            ctx.strokeStyle = '#5C3317'; ctx.lineWidth = 3; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
-            if (struct.hp < barricadeHP * 0.5) { ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(10, 5); ctx.stroke(); }
+            ctx.fillStyle = struct.isPermanent ? '#5C3317' : '#8B4513'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
+            ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#5C3317'; ctx.lineWidth = 3; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
+            if (!struct.isPermanent && struct.hp < barricadeHP * 0.5) { ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(10, 5); ctx.stroke(); }
         } else if (struct.type === 'tar') {
             ctx.fillStyle = 'rgba(30, 30, 30, 0.7)'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
-            ctx.strokeStyle = '#000000'; ctx.lineWidth = 2; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
+            ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#000000'; ctx.lineWidth = 2; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
         } else if (struct.type === 'wire') {
             ctx.fillStyle = 'rgba(150, 150, 150, 0.3)'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
-            ctx.strokeStyle = '#777777'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.setLineDash([]);
+            ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#777777'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.setLineDash([]);
         } else if (struct.type === 'tesla') {
             ctx.fillStyle = '#00e5ff'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill();
+            if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.stroke(); }
             ctx.fillStyle = 'rgba(0, 229, 255, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
         } else if (struct.type === 'plague') {
             ctx.fillStyle = '#1b5e20'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.fill();
+            if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.closePath(); ctx.stroke(); }
             ctx.fillStyle = 'rgba(27, 94, 32, 0.2)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
         } else if (struct.type === 'soul') {
             ctx.fillStyle = '#aa00ff'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.fill();
+            if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.closePath(); ctx.stroke(); }
             ctx.fillStyle = 'rgba(170, 0, 255, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
         } else if (struct.type === 'mending') {
             ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill();
+            if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.stroke(); }
             ctx.fillStyle = 'white'; ctx.fillRect(-2, -10, 4, 20); ctx.fillRect(-10, -2, 20, 4);
         } else if (struct.type === 'charm') {
             ctx.fillStyle = '#29b6f6'; 
             ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.fill(); 
             ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.fill(); 
+            if (struct.isPermanent) { 
+                ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; 
+                ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.closePath(); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.closePath(); ctx.stroke();
+            }
             ctx.fillStyle = 'rgba(41, 182, 246, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
         }
-        
         ctx.restore();
         
-        if (struct.hp <= 0) {
+        if (struct.hp <= 0 && !struct.isPermanent) {
             if (struct.type === 'barricade' && barricadeExplosionDamage > 0) {
                 enemies.forEach(e => {
                     if (!e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= 80) {
@@ -683,7 +908,7 @@ function animate() {
         }
     }
 
-    if (!isPaused && isGameStarted) {
+    if (!isPaused && isGameStarted && !isPlacingPerms) {
         spells.forEach((spell, index) => {
             if (spell.state === 'flying') {
                 spell.progress += 15 / spell.distance;
@@ -701,8 +926,13 @@ function animate() {
                     if (e.dead || e.charmed) return; 
                     if (Math.hypot(spell.targetX - e.x, spell.targetY - e.y) < spell.radius + e.radius && !spell.hitEnemies.has(e)) {
                         spell.hitEnemies.add(e); 
-                        e.hp -= Math.floor(Math.random() * 4) + 3 + spellDamageBonus;
-                        if (e.hp <= 0) e.dead = true;
+                        e.hp -= (Math.floor(Math.random() * 4) + 3 + spellDamageBonus);
+                        if (e.hp <= 0) {
+                            e.dead = true;
+                            if (Math.random() < vampiricChance && health < maxHealth) {
+                                health++; updateHealthUI();
+                            }
+                        }
                     }
                 });
 
@@ -710,22 +940,66 @@ function animate() {
                     const crystal = crystals[c];
                     if (Math.hypot(spell.targetX - crystal.x, spell.targetY - crystal.y) < spell.radius + crystal.radius && !spell.hitEnemies.has(crystal)) {
                         spell.hitEnemies.add(crystal);
-                        crystal.hp -= Math.floor(Math.random() * 4) + 3 + spellDamageBonus;
+                        crystal.hp -= (Math.floor(Math.random() * 4) + 3 + spellDamageBonus);
                         
                         if (crystal.hp <= 0) {
                             crystals.splice(c, 1);
+                            
                             if (crystalsSpawned && crystals.length === 0 && !victoryAchieved) {
-                                victoryAchieved = true;
-                                isPaused = true;
-                                clearTimeout(spawnTimer);
-                                canvas.style.cursor = 'default';
-                                document.getElementById('victoryModal').style.display = 'flex';
+                                if (savedData.prestigeUpgrades.trueEnding > 0 && bossesKilled < 15) {
+                                    crystalsSpawned = false; 
+                                } else {
+                                    victoryAchieved = true;
+                                    isPaused = true;
+                                    clearTimeout(spawnTimer);
+                                    
+                                    let diff = Date.now() - lastPlaytimeSave;
+                                    savedData.unclaimedWins += 1;
+                                    savedData.unclaimedPlaytime += diff; 
+                                    savedData.totalPlaytime += diff;
+                                    saveGame();
+                                    updatePrestigeUI();
+
+                                    canvas.style.cursor = 'default';
+                                    
+                                    if (savedData.prestigeUpgrades.trueEnding > 0 && bossesKilled >= 15) {
+                                        let totalSecs = Math.floor(savedData.totalPlaytime / 1000);
+                                        let hours = Math.floor(totalSecs / 3600);
+                                        let minutes = Math.floor((totalSecs % 3600) / 60);
+                                        
+                                        let runPP = Math.floor(survivalTimeMs / 3600000) + 2; 
+
+                                        document.getElementById('tvTotalTimeEl').innerText = `${hours}h ${minutes}m`;
+                                        document.getElementById('tvDeathsEl').innerText = savedData.totalDeaths;
+                                        document.getElementById('tvRunGoldEl').innerText = runGold;
+                                        document.getElementById('tvRunPPEl').innerText = runPP;
+
+                                        document.getElementById('trueVictoryModal').style.display = 'flex';
+                                    } else {
+                                        document.getElementById('victoryModal').style.display = 'flex';
+                                    }
+                                }
                             }
                         }
                     }
                 }
-
-                if (spell.radius >= spell.maxRadius) setTimeout(() => spells.splice(index, 1), 0);
+                if (spell.radius >= spell.maxRadius) {
+                    if (spell.bounces > 0) {
+                        let validTargets = enemies.filter(e => !e.dead && !e.charmed && !spell.bounceHistory.has(e));
+                        if (validTargets.length > 0) {
+                            validTargets.sort((a,b) => Math.hypot(spell.targetX - a.x, spell.targetY - a.y) - Math.hypot(spell.targetX - b.x, spell.targetY - b.y));
+                            let newTarget = validTargets[0];
+                            spell.bounceHistory.add(newTarget);
+                            let dist = Math.hypot(newTarget.x - spell.targetX, newTarget.y - spell.targetY);
+                            spells.push({
+                                startX: spell.targetX, startY: spell.targetY, targetX: newTarget.x, targetY: newTarget.y, distance: dist,
+                                progress: 0, arcHeight: Math.min(dist * 0.4, 150), radius: 0, maxRadius: spell.maxRadius * 0.8, state: 'flying', 
+                                hitEnemies: new Set(), bounces: spell.bounces - 1, bounceHistory: new Set(spell.bounceHistory) 
+                            });
+                        }
+                    }
+                    setTimeout(() => spells.splice(index, 1), 0);
+                }
             }
         });
 
@@ -737,12 +1011,17 @@ function animate() {
             if (e.dead) {
                 killCount++;
                 if (e.isBoss) { 
-                    savedData.gold += 2 + bossGoldBonus; runGold += 2 + bossGoldBonus; saveGame(); updateGoldUI(); 
+                    savedData.gold += 2 + bossGoldBonus + bountyHunterBonus; 
+                    runGold += 2 + bossGoldBonus + bountyHunterBonus; 
+                    saveGame(); updateGoldUI(); 
                     bossesKilled++; 
-                    
-                    if (bossesKilled === 10 && !crystalsSpawned) {
+                
+                    if (bossesKilled === 10 && !crystalsSpawned) { 
+                        crystalsSpawned = true; 
+                        spawnCrystals(1); 
+                    } else if (bossesKilled === 15 && !crystalsSpawned && savedData.prestigeUpgrades.trueEnding > 0) {
                         crystalsSpawned = true;
-                        spawnCrystals();
+                        spawnCrystals(2);
                     }
                 } 
                 else if (killCount % goldDropThreshold === 0) { savedData.gold += 1; runGold += 1; saveGame(); updateGoldUI(); }
@@ -751,8 +1030,7 @@ function animate() {
                 structures.forEach(s => { if (s.type === 'soul' && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius) finalXp *= soulMultiplier; });
 
                 addXp(finalXp); 
-                enemies.splice(i, 1);
-                continue; 
+                enemies.splice(i, 1); continue; 
             }
 
             let speedModifier = 1;
@@ -761,8 +1039,7 @@ function animate() {
 
             if (e.charmed) {
                 speedModifier = 1.2;
-                let closestDist = Infinity;
-                let closestEnemy = null;
+                let closestDist = Infinity; let closestEnemy = null;
                 for (let j = 0; j < enemies.length; j++) {
                     const other = enemies[j];
                     if (i !== j && !other.charmed && !other.dead) {
@@ -779,9 +1056,7 @@ function animate() {
                         if (closestEnemy.hp <= 0) closestEnemy.dead = true;
                         if (e.hp <= 0) e.dead = true;
                     }
-                } else {
-                    targetAngle = Math.atan2(e.y - player.y, e.x - player.x); 
-                }
+                } else { targetAngle = Math.atan2(e.y - player.y, e.x - player.x); }
             } else {
                 structures.forEach(struct => {
                     if (struct.type === 'tar') {
@@ -793,25 +1068,26 @@ function animate() {
                                 const lastHitTime = struct.hitZombies.get(e) || 0;
                                 if (currentFrameTime - lastHitTime >= 500) {
                                     struct.hitZombies.set(e, currentFrameTime);
-                                    e.hp -= Math.floor(Math.random() * 6) + 5 + wireDamageBonus;
+                                    e.hp -= (Math.floor(Math.random() * 6) + 5 + wireDamageBonus);
                                     if (e.hp <= 0) e.dead = true;
                                 }
                             } else {
-                                hitTarget = struct;
-                                e.x += col.normalX * col.overlap;
-                                e.y += col.normalY * col.overlap;
+                                hitTarget = struct; e.x += col.normalX * col.overlap; e.y += col.normalY * col.overlap;
                             }
                         }
                     }
                 });
 
-                if (hitTarget) hitTarget.hp -= e.isBoss ? 2.5 : 0.5;
+                if (hitTarget && !hitTarget.isPermanent) {
+                    hitTarget.hp -= e.isBoss ? 2.5 : 0.5;
+                    if (hitTarget.type === 'barricade' && ironbarkDamage > 0) {
+                        e.hp -= ironbarkDamage;
+                        if (e.hp <= 0) e.dead = true;
+                    }
+                }
 
                 if (Math.hypot(player.x - e.x, player.y - e.y) - e.radius - 30 < 1) {
-                    enemies.splice(i, 1);
-                    health -= e.isBoss ? 40 : 10;
-                    updateHealthUI();
-                    continue; 
+                    enemies.splice(i, 1); health -= e.isBoss ? 40 : 10; updateHealthUI(); continue; 
                 }
             }
 
@@ -844,8 +1120,7 @@ function animate() {
         
         if (effect.type === 'lightning') {
             ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(effect.x1, effect.y1);
-            const midX = (effect.x1 + effect.x2) / 2 + (Math.random() - 0.5) * 20;
-            const midY = (effect.y1 + effect.y2) / 2 + (Math.random() - 0.5) * 20;
+            const midX = (effect.x1 + effect.x2) / 2 + (Math.random() - 0.5) * 20; const midY = (effect.y1 + effect.y2) / 2 + (Math.random() - 0.5) * 20;
             ctx.lineTo(midX, midY); ctx.lineTo(effect.x2, effect.y2); ctx.stroke();
         } else if (effect.type === 'explosion') {
             const life = Math.max(0, (effect.expires - currentFrameTime) / 200);
@@ -863,23 +1138,14 @@ function animate() {
         ctx.fillStyle = 'rgba(255, 0, 0, 0.8)'; ctx.fillRect(-bW/2, bO, bW, 4); 
         ctx.fillStyle = '#76ff03'; ctx.fillRect(-bW/2, bO, bW * (e.hp / e.maxHp), 4); 
         
-        if (e.charmed) {
-            ctx.rotate(Math.atan2(e.y - player.y, e.x - player.x)); 
-        } else {
-            ctx.rotate(Math.atan2(player.y - e.y, player.x - e.x)); 
-        }
+        if (e.charmed) { ctx.rotate(Math.atan2(e.y - player.y, e.x - player.x)); } 
+        else { ctx.rotate(Math.atan2(player.y - e.y, player.x - e.x)); }
         
-        if (e.poisoned && !e.charmed) {
-            ctx.fillStyle = 'rgba(27, 94, 32, 0.6)';
-            ctx.beginPath(); ctx.arc(0, 0, e.radius + 6, 0, Math.PI * 2); ctx.fill();
-        }
+        if (e.poisoned && !e.charmed) { ctx.fillStyle = 'rgba(27, 94, 32, 0.6)'; ctx.beginPath(); ctx.arc(0, 0, e.radius + 6, 0, Math.PI * 2); ctx.fill(); }
 
         const baseColor = e.charmed ? '#29b6f6' : (e.isBoss ? '#4a148c' : '#4caf50');
         const strokeColor = e.charmed ? '#0288d1' : (e.isBoss ? '#12005e' : '#1b5e20');
-        
-        ctx.fillStyle = (e.poisoned && !e.charmed) ? '#1b5e20' : baseColor; 
-        ctx.strokeStyle = strokeColor; 
-        ctx.lineWidth = 2;
+        ctx.fillStyle = (e.poisoned && !e.charmed) ? '#1b5e20' : baseColor; ctx.strokeStyle = strokeColor; ctx.lineWidth = 2;
         
         const aL = e.isBoss ? 25 : 15, aW = e.isBoss ? 10 : 6, aY = e.isBoss ? 18 : 12;
         ctx.fillRect(e.radius * 0.3, -aY, aL, aW); ctx.strokeRect(e.radius * 0.3, -aY, aL, aW);
@@ -890,27 +1156,12 @@ function animate() {
     });
 
     crystals.forEach(c => {
-        ctx.save(); 
-        ctx.translate(c.x, c.y); 
-        
+        ctx.save(); ctx.translate(c.x, c.y); 
         ctx.fillStyle = 'rgba(255, 0, 0, 0.8)'; ctx.fillRect(-25, -50, 50, 5); 
         ctx.fillStyle = '#ffd700'; ctx.fillRect(-25, -50, 50 * (c.hp / c.maxHp), 5); 
+        ctx.fillStyle = 'rgba(170, 0, 255, 0.7)'; ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 3; ctx.shadowBlur = 15; ctx.shadowColor = '#aa00ff';
         
-        ctx.fillStyle = 'rgba(170, 0, 255, 0.7)';
-        ctx.strokeStyle = '#e040fb';
-        ctx.lineWidth = 3;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#aa00ff';
-        
-        ctx.beginPath();
-        ctx.moveTo(0, -c.radius);
-        ctx.lineTo(c.radius, 0);
-        ctx.lineTo(0, c.radius);
-        ctx.lineTo(-c.radius, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        
+        ctx.beginPath(); ctx.moveTo(0, -c.radius); ctx.lineTo(c.radius, 0); ctx.lineTo(0, c.radius); ctx.lineTo(-c.radius, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.restore(); 
     });
 
@@ -924,27 +1175,34 @@ function animate() {
         else if (currentBlueprint === 'soul') { radius = 150; }
         else if (currentBlueprint === 'charm') { radius = 150; }
 
+        let isPerm = isPlacingPerms;
+        if (isPerm) {
+            w = w * 0.75;
+            h = h * 0.75;
+            radius = Math.max(radius * 0.75, 50);
+        }
+
         ctx.save(); ctx.translate(mouseX, mouseY); ctx.rotate(blueprintAngle);
         if (Math.hypot(player.x - mouseX, player.y - mouseY) <= restrictedRadius) { 
             ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'; ctx.strokeStyle = 'red'; 
             ctx.fillRect(-w/2, -h/2, w, h); ctx.lineWidth = 2; ctx.strokeRect(-w/2, -h/2, w, h);
         } else {
-            if (currentBlueprint === 'barricade') { ctx.fillStyle = 'rgba(139, 69, 19, 0.5)'; ctx.strokeStyle = 'white'; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); } 
-            else if (currentBlueprint === 'tar') { ctx.fillStyle = 'rgba(30, 30, 30, 0.5)'; ctx.strokeStyle = 'white'; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); } 
-            else if (currentBlueprint === 'wire') { ctx.fillStyle = 'rgba(150, 150, 150, 0.3)'; ctx.strokeStyle = 'white'; ctx.setLineDash([5, 5]); ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); }
-            else if (currentBlueprint === 'tesla') { ctx.fillStyle = 'rgba(0, 229, 255, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle='rgba(0, 229, 255, 0.1)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
-            else if (currentBlueprint === 'plague') { ctx.fillStyle = 'rgba(27, 94, 32, 0.7)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.fill(); ctx.fillStyle='rgba(27, 94, 32, 0.2)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
-            else if (currentBlueprint === 'soul') { ctx.fillStyle = 'rgba(170, 0, 255, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.fill(); ctx.fillStyle='rgba(170, 0, 255, 0.1)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
-            else if (currentBlueprint === 'mending') { ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); }
+            if (currentBlueprint === 'barricade') { ctx.fillStyle = 'rgba(139, 69, 19, 0.5)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); } 
+            else if (currentBlueprint === 'tar') { ctx.fillStyle = 'rgba(30, 30, 30, 0.5)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); } 
+            else if (currentBlueprint === 'wire') { ctx.fillStyle = 'rgba(150, 150, 150, 0.3)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.setLineDash([5, 5]); ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); }
+            else if (currentBlueprint === 'tesla') { ctx.fillStyle = 'rgba(0, 229, 255, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.stroke(); } ctx.fillStyle='rgba(0, 229, 255, 0.1)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
+            else if (currentBlueprint === 'plague') { ctx.fillStyle = 'rgba(27, 94, 32, 0.7)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.closePath(); ctx.stroke(); } ctx.fillStyle='rgba(27, 94, 32, 0.2)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
+            else if (currentBlueprint === 'soul') { ctx.fillStyle = 'rgba(170, 0, 255, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.closePath(); ctx.stroke(); } ctx.fillStyle='rgba(170, 0, 255, 0.1)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
+            else if (currentBlueprint === 'mending') { ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.stroke(); } }
             else if (currentBlueprint === 'charm') { 
-                ctx.fillStyle = 'rgba(41, 182, 246, 0.5)'; 
-                ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.fill(); 
+                ctx.fillStyle = 'rgba(41, 182, 246, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.fill(); 
                 ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.fill(); 
+                if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.closePath(); ctx.stroke(); }
                 ctx.fillStyle = 'rgba(41, 182, 246, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill();
             }
         }
         ctx.restore();
-    } else if (!isPaused && isGameStarted) {
+    } else if (!isPaused && isGameStarted && !isPlacingPerms) {
         const cannotShoot = Math.hypot(player.x - mouseX, player.y - mouseY) <= restrictedRadius || currentAmmo <= 0; 
         ctx.beginPath(); ctx.arc(mouseX, mouseY, maxBlastRadius, 0, Math.PI * 2);
         ctx.fillStyle = cannotShoot ? 'rgba(100, 100, 100, 0.2)' : 'rgba(255, 0, 0, 0.1)'; ctx.fill(); ctx.strokeStyle = cannotShoot ? 'rgba(100, 100, 100, 0.7)' : 'rgba(255, 0, 0, 0.7)'; ctx.lineWidth = 2; ctx.stroke();

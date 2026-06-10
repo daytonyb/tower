@@ -53,30 +53,31 @@ canvas { display: block; cursor: none; }
     align-items: center; z-index: 20; cursor: default; 
 }
 
-.celeste-menu-container { display: flex; width: 90%; max-width: 1200px; height: 75vh; background: transparent; }
+.celeste-menu-container { display: flex; width: 95%; max-width: 1400px; height: 85vh; background: transparent; }
 
 .menu-sidebar {
-    width: 30%; display: flex; flex-direction: column;
-    border-right: 4px solid rgba(255, 255, 255, 0.2); padding-right: 30px;
+    width: 20%; display: flex; flex-direction: column;
+    border-right: 4px solid rgba(255, 255, 255, 0.2); padding-right: 20px;
 }
 
 .game-title-small {
-    color: #ff4500; font-size: 32px; margin-top: 0; margin-bottom: 40px;
+    color: #ff4500; font-size: 28px; margin-top: 0; margin-bottom: 40px;
     text-shadow: 0 0 15px #ff4500, 4px 4px 0px black; line-height: 1.5;
 }
 
 .menu-tab-btn {
     background: transparent; border: none; color: #888;
-    font-family: 'Press Start 2P', cursive; font-size: 14px;
+    font-family: 'Press Start 2P', cursive; font-size: 12px;
     text-align: left; padding: 15px 0; cursor: pointer; transition: all 0.2s ease;
     text-shadow: 2px 2px 0px black;
 }
 
 .menu-tab-btn:hover { color: white; padding-left: 15px; }
 .menu-tab-btn.active { color: #4a90e2; padding-left: 15px; text-shadow: 0 0 10px rgba(74, 144, 226, 0.8), 2px 2px 0px black; }
+#btnTabPrestige.active { color: #e040fb; text-shadow: 0 0 10px rgba(170, 0, 255, 0.8), 2px 2px 0px black; }
 
-.menu-content-area { width: 70%; padding-left: 50px; position: relative; overflow-y: auto; }
-.menu-tab-content { display: none; animation: fadeIn 0.3s ease; }
+.menu-content-area { width: 80%; padding-left: 30px; position: relative; overflow-y: hidden; }
+.menu-tab-content { display: none; animation: fadeIn 0.3s ease; height: 100%; }
 .menu-tab-content.active { display: block; }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
@@ -106,11 +107,12 @@ canvas { display: block; cursor: none; }
     text-align: center; max-width: 800px; box-shadow: 8px 8px 0px black;
 }
 
-.card-container { display: flex; gap: 20px; margin-top: 20px; justify-content: center; flex-wrap: wrap; }
+.card-container { display: flex; gap: 15px; margin-top: 10px; justify-content: flex-start; flex-wrap: nowrap; align-items: stretch;}
 
 .upgrade-card {
-    background: #16213e; border: 4px solid #4a90e2; color: white; padding: 15px;
-    width: 200px; cursor: pointer; transition: 0.1s; text-align: left;
+    background: #16213e; border: 4px solid #4a90e2; color: white; padding: 12px;
+    flex: 1; min-width: 0;
+    cursor: pointer; transition: 0.1s; text-align: left;
     font-family: 'Press Start 2P', cursive; display: flex; flex-direction: column; justify-content: space-between;
     box-shadow: 4px 4px 0px black;
 }
@@ -118,11 +120,29 @@ canvas { display: block; cursor: none; }
 .upgrade-card:hover:not(:disabled) { background: #2a406e; transform: translate(2px, 2px); box-shadow: 2px 2px 0px black; }
 .upgrade-card:disabled { opacity: 0.5; cursor: not-allowed; border-color: #555; background: #222; }
 
-.upgrade-card h3 { font-size: 10px; margin-top: 0; color: #4a90e2; line-height: 1.5; }
-.upgrade-card p { font-size: 8px; line-height: 1.6; margin-bottom: 10px; }
+.upgrade-card h3 { font-size: 9px; margin-top: 0; color: #4a90e2; line-height: 1.5; }
+.upgrade-card p { font-size: 7px; line-height: 1.6; margin-bottom: 5px; }
 
 .buy-btn {
-    background: #ffd700; color: #000; border: 2px solid white; padding: 10px; 
-    font-size: 10px; margin-top: 10px; cursor: pointer; font-family: inherit; box-shadow: 2px 2px 0px black;
+    background: #ffd700; color: #000; border: 2px solid white; padding: 8px; 
+    font-size: 9px; margin-top: 10px; cursor: pointer; font-family: inherit; box-shadow: 2px 2px 0px black;
 }
 .buy-btn:disabled { background: #555; color: #888; border-color: #333; }
+
+/* Prestige Styling */
+.prestige-card { border-color: #aa00ff !important; background: #2a0a4a !important; }
+.prestige-card h3 { color: #e040fb !important; }
+.prestige-card:hover:not(:disabled) { background: #3c0f6b !important; border-color: #e040fb !important; box-shadow: 2px 2px 0px #aa00ff !important; }
+.buy-btn.prestige-btn { background: #aa00ff; color: white; border-color: #e040fb; }
+.buy-btn.prestige-btn:disabled { background: #333; border-color: #555; color: #888; }
+
+/* True Ending Card Extra Flare */
+.true-ending-card { border-color: #00e5ff !important; background: #0a1a2a !important; animation: pulseGlow 2s infinite; }
+.true-ending-card h3 { color: #00e5ff !important; text-shadow: 0 0 10px #00e5ff; }
+.true-ending-card .prestige-btn { background: #00e5ff !important; color: black !important; border-color: white !important; }
+
+@keyframes pulseGlow {
+    0% { box-shadow: 0 0 5px #00e5ff, 4px 4px 0px black; }
+    50% { box-shadow: 0 0 20px #00e5ff, 4px 4px 0px black; }
+    100% { box-shadow: 0 0 5px #00e5ff, 4px 4px 0px black; }
+}
