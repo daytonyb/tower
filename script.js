@@ -62,14 +62,15 @@ function loadSaveSlot(slotIndex) {
             deepPockets: 0, arcaneHaste: 0, volatileEmbers: 0, reinforcedWood: 0, viscousTar: 0, 
             serratedWire: 0, highVoltage: 0, toxicSpores: 0, deepSiphon: 0, blessedAura: 0, 
             masonry: 0, scholarsInsight: 0, headStart: 0, 
-            evocationMastery: 0, alchemistsTouch: 0, potentToxins: 0, splinteringWards: 0, arcaneFortitude: 0, mesmerizingGaze: 0 
+            evocationMastery: 0, alchemistsTouch: 0, potentToxins: 0, splinteringWards: 0, arcaneFortitude: 0, mesmerizingGaze: 0,
+            cursedLure: 0, arcaneOverload: 0
         },
         prestigePoints: 0,
         unclaimedPlaytime: 0,
         unclaimedWins: 0,
         totalPlaytime: 0,
         totalDeaths: 0,
-        prestigeUpgrades: { permBarricade: 0, permTar: 0, permWire: 0, permTesla: 0, permPlague: 0, permSoul: 0, permMending: 0, permCharm: 0, trueEnding: 0, goldenEpoch: 0, arcaneRicochet: 0, vampiricStrike: 0, soulBattery: 0, bountyHunter: 0, ironbark: 0, livingWood: 0 }
+        prestigeUpgrades: { permBarricade: 0, permTar: 0, permWire: 0, permTesla: 0, permPlague: 0, permSoul: 0, permMending: 0, permCharm: 0, trueEnding: 0, goldenEpoch: 0, arcaneRicochet: 0, vampiricStrike: 0, soulBattery: 0, bountyHunter: 0, ironbark: 0, livingWood: 0, challengerBell: 0, temporalShift: 0, timeDilator: 0 }
     };
     
     // Backwards compatibility 
@@ -80,7 +81,7 @@ function loadSaveSlot(slotIndex) {
     if (savedData.totalPlaytime === undefined) savedData.totalPlaytime = 0;
     if (savedData.totalDeaths === undefined) savedData.totalDeaths = 0;
     if (savedData.prestigeUpgrades === undefined || savedData.prestigeUpgrades.permBarricade === undefined) {
-        savedData.prestigeUpgrades = { permBarricade: 0, permTar: 0, permWire: 0, permTesla: 0, permPlague: 0, permSoul: 0, permMending: 0, permCharm: 0, trueEnding: 0, goldenEpoch: 0, arcaneRicochet: 0, vampiricStrike: 0, soulBattery: 0, bountyHunter: 0, ironbark: 0, livingWood: 0 };
+        savedData.prestigeUpgrades = { permBarricade: 0, permTar: 0, permWire: 0, permTesla: 0, permPlague: 0, permSoul: 0, permMending: 0, permCharm: 0, trueEnding: 0, goldenEpoch: 0, arcaneRicochet: 0, vampiricStrike: 0, soulBattery: 0, bountyHunter: 0, ironbark: 0, livingWood: 0, challengerBell: 0, temporalShift: 0, timeDilator: 0 };
     }
     
     saveGame();
@@ -136,7 +137,9 @@ const UPGRADE_DATA = {
     potentToxins: { name: "Potent Toxins", desc: "More Poison Dmg.", baseCost: 4, maxLevel: 5 },
     splinteringWards: { name: "Splinter Wards", desc: "Exploding walls.", baseCost: 5, maxLevel: 3 },
     arcaneFortitude: { name: "Arcane Fort", desc: "+25 Trap HP.", baseCost: 2, maxLevel: 5 },
-    mesmerizingGaze: { name: "Mesmerize", desc: "-1s Charm CD.", baseCost: 5, maxLevel: 5 }
+    mesmerizingGaze: { name: "Mesmerize", desc: "-1s Charm CD.", baseCost: 5, maxLevel: 5 },
+    cursedLure: { name: "Cursed Lure", desc: "Faster enemy spawns.", baseCost: 3, maxLevel: 5 },
+    arcaneOverload: { name: "Arcane Surge", desc: "5% Double XP chance.", baseCost: 5, maxLevel: 4 }
 };
 
 const PRESTIGE_UPGRADE_DATA = {
@@ -155,6 +158,9 @@ const PRESTIGE_UPGRADE_DATA = {
     bountyHunter: { name: "Bounty Hunter", desc: "Boss kills yield +1 extra Gold per level.", cost: 5, maxLevel: 5 },
     ironbark: { name: "Ironbark", desc: "Barricades reflect 1 dmg per level.", cost: 5, maxLevel: 5 },
     livingWood: { name: "Living Wood", desc: "Barricades regen 5 HP/sec per level.", cost: 6, maxLevel: 5 },
+    challengerBell: { name: "Challenger's Bell", desc: "-1 Level req for Bosses.", cost: 10, maxLevel: 2 },
+    temporalShift: { name: "Temporal Shift", desc: "-30s boss backup timer.", cost: 8, maxLevel: 5 },
+    timeDilator: { name: "Time Dilator", desc: "+10% Game Speed per level.", cost: 15, maxLevel: 5 },
     trueEnding: { name: "The Truth", desc: "Unlock the final mystery...", cost: 100, maxLevel: 1 }
 };
 
@@ -176,6 +182,9 @@ let spellDamageBonus, goldDropThreshold, bossGoldBonus, poisonTickDamage, barric
 
 // Prestige Scaling Variables
 let goldenEpochBonus, ricochetBounces, vampiricChance, soulBatteryReduction, bountyHunterBonus, ironbarkDamage, livingWoodRegen;
+
+// Pacing Variables
+let lureSpawnReduction = 0, overloadChance = 0, bossLevelThreshold = 5, bossTimerReduction = 0, timeDilationFactor = 1;
 
 let animationId, isPaused = false, isGameStarted = false, isPlacingPerms = false; 
 let survivalTimeMs = 0, lastFrameTime = Date.now(), formattedTime = "00:00";
@@ -228,6 +237,15 @@ function applyUpgrades() {
     bountyHunterBonus = (savedData.prestigeUpgrades.bountyHunter || 0);
     ironbarkDamage = (savedData.prestigeUpgrades.ironbark || 0);
     livingWoodRegen = (savedData.prestigeUpgrades.livingWood || 0) * 5;
+
+    // NEW STANDARD UPGRADES
+    lureSpawnReduction = savedData.upgrades.cursedLure * 400; 
+    overloadChance = savedData.upgrades.arcaneOverload * 0.05; 
+
+    // NEW PRESTIGE UPGRADES
+    bossLevelThreshold = 5 - (savedData.prestigeUpgrades.challengerBell || 0); 
+    bossTimerReduction = (savedData.prestigeUpgrades.temporalShift || 0) * 30000; 
+    timeDilationFactor = 1 + ((savedData.prestigeUpgrades.timeDilator || 0) * 0.1); 
     
     xpToNextLevel = 100;
     for (let i = 1; i < level; i++) xpToNextLevel = Math.floor(xpToNextLevel * 1.4);
@@ -423,13 +441,14 @@ function resetGame() {
     pendingPerms = [];
     
     survivalTimeMs = 0;
-    nextBossTime = 300000;
     formattedTime = "00:00";
     timerDisplay.innerText = formattedTime;
     xp = 0; lastBossLevel = 0; killCount = 0; runGold = 0;
     enemies.length = 0; spells.length = 0; structures.length = 0; visualEffects.length = 0;
     
     applyUpgrades(); 
+    nextBossTime = 300000 - bossTimerReduction;
+    
     xpBarFill.style.width = '0%';
     xpText.innerHTML = `${xp} / ${xpToNextLevel}`;
     updateAmmoUI();
@@ -715,9 +734,12 @@ function spawnBossEnemy() {
 
 function spawnWave() {
     if (isPaused || !isGameStarted || isPlacingPerms) return;
-    const nextSpawnDelay = Math.random() * (7000 - 3000) + 3000;
     
-    if (level % 5 === 0 && lastBossLevel !== level) {
+    const minSpawn = Math.max(1000, 3000 - lureSpawnReduction);
+    const maxSpawn = Math.max(2000, 7000 - lureSpawnReduction);
+    const nextSpawnDelay = Math.random() * (maxSpawn - minSpawn) + minSpawn;
+    
+    if (level % bossLevelThreshold === 0 && lastBossLevel !== level) {
         lastBossLevel = level;
         spawnBossEnemy();
     } else {
@@ -772,7 +794,7 @@ function animate() {
     animationId = requestAnimationFrame(animate);
     
     const currentFrameTime = Date.now();
-    const deltaTime = currentFrameTime - lastFrameTime;
+    const deltaTime = (currentFrameTime - lastFrameTime) * timeDilationFactor;
     lastFrameTime = currentFrameTime;
 
     if (!isPaused && isGameStarted && !isPlacingPerms) {
@@ -788,7 +810,11 @@ function animate() {
             lastPlaytimeSave = currentFrameTime;
         }
 
-        if (survivalTimeMs >= nextBossTime) { nextBossTime += 300000; spawnBossEnemy(); }
+        const currentBossInterval = 300000 - bossTimerReduction;
+        if (survivalTimeMs >= nextBossTime) { 
+            nextBossTime += currentBossInterval; 
+            spawnBossEnemy(); 
+        }
 
         if (currentAmmo < maxAmmo && currentFrameTime - lastRechargeTime >= rechargeRate) {
             currentAmmo++; lastRechargeTime += rechargeRate; updateAmmoUI();
@@ -1028,6 +1054,10 @@ function animate() {
 
                 let finalXp = e.xpDrop;
                 structures.forEach(s => { if (s.type === 'soul' && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius) finalXp *= soulMultiplier; });
+
+                if (Math.random() < overloadChance) {
+                    finalXp *= 2;
+                }
 
                 addXp(finalXp); 
                 enemies.splice(i, 1); continue; 
