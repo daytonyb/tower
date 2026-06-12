@@ -104,7 +104,7 @@ function showSaveSelect() {
 function loadSaveSlot(slotIndex) {
     currentSaveSlot = slotIndex;
     savedData = JSON.parse(localStorage.getItem('roR_save_' + slotIndex)) || {
-        gold: 0,
+        gold: 3,
         upgrades: { 
             deepPockets: 0, arcaneHaste: 0, volatileEmbers: 0, reinforcedWood: 0, viscousTar: 0, 
             serratedWire: 0, highVoltage: 0, toxicSpores: 0, deepSiphon: 0, blessedAura: 0, 
@@ -559,10 +559,7 @@ function triggerGameOver() {
     savedData.unclaimedPlaytime += diff;
     savedData.totalPlaytime += diff;
     savedData.totalDeaths += 1;
-    
-    if (savedData.gold > 0) {
-        savedData.gold = Math.max(0, savedData.gold - 1);
-    }
+
     saveGame();
     updateGoldUI();
     updatePrestigeUI();
