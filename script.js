@@ -6,9 +6,23 @@ ctx.imageSmoothingEnabled = false;
 
 // Load the assets
 const ASSETS = {
-    playerTower: new Image()
+    playerTower: new Image(),
+    zombie: new Image(),
+    zombiePoisoned: new Image(),
+    zombieCharmed: new Image(),
+    poisonBubbles: new Image(),
+    boss: new Image(),
+    bossPoisoned: new Image()
 };
+
+// Make sure these match the filenames you saved them as!
 ASSETS.playerTower.src = 'tower.png';
+ASSETS.zombie.src = 'zombie.png';
+ASSETS.zombiePoisoned.src = 'zombie_poisoned.png';
+ASSETS.zombieCharmed.src = 'zombie_charmed.png';
+ASSETS.poisonBubbles.src = 'bubbles.png'; 
+ASSETS.boss.src = 'boss.png';
+ASSETS.bossPoisoned.src = 'boss_poisoned.png';
 
 const xpText = document.getElementById('xpText');
 const xpBarFill = document.getElementById('xpBarFill');
@@ -35,6 +49,7 @@ function updateScaleAndDimensions() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
+    // We use a baseline diagonal (1920x1080) to figure out how much to scale the game objects
     const currentDiagonal = Math.sqrt(canvas.width * canvas.width + canvas.height * canvas.height);
     const baseDiagonal = Math.sqrt(1920 * 1920 + 1080 * 1080);
     
@@ -42,7 +57,7 @@ function updateScaleAndDimensions() {
     logicalWidth = canvas.width / gameScale;
     logicalHeight = canvas.height / gameScale;
 
-    // ADD THIS HERE: Keep pixel art crisp even after resizing
+    // Keep pixel art crisp even after resizing
     ctx.imageSmoothingEnabled = false;
 }
 
@@ -1236,7 +1251,8 @@ function animate() {
         }
     }
 
-const tw = 60, th = 80;
+    // --- DRAW THE TOWER ---
+    const tw = 60, th = 80;
     
     // Draw the shadow beneath the tower
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
@@ -1245,8 +1261,11 @@ const tw = 60, th = 80;
     ctx.fill();
 
     // Draw the new pixel art tower
-    ctx.drawImage(ASSETS.playerTower, player.x - tw/2, player.y - th/2, tw, th);
+    if (ASSETS.playerTower.complete && ASSETS.playerTower.naturalHeight !== 0) {
+        ctx.drawImage(ASSETS.playerTower, player.x - tw/2, player.y - th/2, tw, th);
+    }
 
+    // Health Bar
     const hpW = 60, hpH = 8, hpX = player.x - hpW/2, hpY = player.y - th/2 - 30;
     ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'; ctx.fillRect(hpX, hpY, hpW, hpH);
     ctx.fillStyle = '#e94560'; ctx.fillRect(hpX, hpY, hpW * (health / maxHealth), hpH);
@@ -1277,26 +1296,57 @@ const tw = 60, th = 80;
         }
     }
 
+    // --- DRAW THE ENEMIES ---
     enemies.forEach(e => {
-        ctx.save(); ctx.translate(e.x, e.y); 
+        ctx.save(); 
+        ctx.translate(e.x, e.y); 
+        
+        // 1. Draw Health Bars 
         const bW = e.isBoss ? 40 : 20, bO = e.isBoss ? -35 : -22;
         ctx.fillStyle = 'rgba(255, 0, 0, 0.8)'; ctx.fillRect(-bW/2, bO, bW, 4); 
         ctx.fillStyle = '#76ff03'; ctx.fillRect(-bW/2, bO, bW * (e.hp / e.maxHp), 4); 
         
-        if (e.charmed) { ctx.rotate(Math.atan2(e.y - player.y, e.x - player.x)); } 
-        else { ctx.rotate(Math.atan2(player.y - e.y, player.x - e.x)); }
+        // 2. Rotate the enemy to face their target (fixed for upwards-facing sprites)
+        if (e.charmed) { 
+            ctx.rotate(Math.atan2(e.y - player.y, e.x - player.x) + Math.PI / 2); 
+        } else { 
+            ctx.rotate(Math.atan2(player.y - e.y, player.x - e.x) + Math.PI / 2); 
+        }
         
-        if (e.poisoned && !e.charmed) { ctx.fillStyle = 'rgba(27, 94, 32, 0.6)'; ctx.beginPath(); ctx.arc(0, 0, e.radius + 6, 0, Math.PI * 2); ctx.fill(); }
+        // 3. Figure out the base image
+        let imgToDraw = e.isBoss ? ASSETS.boss : ASSETS.zombie;
+        
+        if (e.charmed) {
+            imgToDraw = ASSETS.zombieCharmed; 
+        } else if (e.poisoned) {
+            imgToDraw = e.isBoss ? ASSETS.bossPoisoned : ASSETS.zombiePoisoned;
+        }
 
-        const baseColor = e.charmed ? '#29b6f6' : (e.isBoss ? '#4a148c' : '#4caf50');
-        const strokeColor = e.charmed ? '#0288d1' : (e.isBoss ? '#12005e' : '#1b5e20');
-        ctx.fillStyle = (e.poisoned && !e.charmed) ? '#1b5e20' : baseColor; ctx.strokeStyle = strokeColor; ctx.lineWidth = 2;
-        
-        const aL = e.isBoss ? 25 : 15, aW = e.isBoss ? 10 : 6, aY = e.isBoss ? 18 : 12;
-        ctx.fillRect(e.radius * 0.3, -aY, aL, aW); ctx.strokeRect(e.radius * 0.3, -aY, aL, aW);
-        ctx.fillRect(e.radius * 0.3, aY - aW, aL, aW); ctx.strokeRect(e.radius * 0.3, aY - aW, aL, aW);
-        ctx.beginPath(); ctx.arc(0, 0, e.radius, 0, Math.PI * 2, false); ctx.fill(); ctx.stroke();
-        if (e.isBoss) { ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(e.radius * 0.4, -8, 4, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(e.radius * 0.4, 8, 4, 0, Math.PI * 2); ctx.fill(); }
+        // Multiply by 3 to scale up the sprites and compensate for transparent edges
+        const size = e.radius * 3; 
+        const offset = -size / 2;
+
+        // 4. Draw the base zombie
+        if (imgToDraw.complete && imgToDraw.naturalHeight !== 0) {
+            ctx.drawImage(imgToDraw, offset, offset, size, size);
+        }
+
+        // 5. If poisoned, draw the animated bubbles on top
+        if (e.poisoned && !e.charmed && ASSETS.poisonBubbles.width > 0) {
+            const frameCount = 5; 
+            const animationSpeed = 250; 
+            
+            const currentFrame = Math.floor(Date.now() / animationSpeed) % frameCount;
+            const frameWidth = ASSETS.poisonBubbles.width / frameCount;
+            const sourceX = currentFrame * frameWidth;
+
+            ctx.drawImage(
+                ASSETS.poisonBubbles, 
+                sourceX, 0, frameWidth, ASSETS.poisonBubbles.height, 
+                offset, offset, size, size                      
+            );
+        }
+
         ctx.restore(); 
     });
 
@@ -1342,7 +1392,7 @@ const tw = 60, th = 80;
             else if (currentBlueprint === 'charm') { 
                 ctx.fillStyle = 'rgba(41, 182, 246, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.fill(); 
                 ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.fill(); 
-                if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.closePath(); ctx.stroke(); }
+                if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.closePath(); ctx.stroke(); }
                 ctx.fillStyle = 'rgba(41, 182, 246, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill();
             }
         }
