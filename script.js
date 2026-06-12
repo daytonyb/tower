@@ -14,7 +14,7 @@ const ASSETS = {
     boss: new Image(),
     bossPoisoned: new Image(),
     mendingWard: new Image(),
-    tarPit: new Image() // Added the new tar pit image
+    tarPit: new Image()
 };
 
 // Make sure these match the filenames you saved them as!
@@ -26,7 +26,7 @@ ASSETS.poisonBubbles.src = 'bubbles.png';
 ASSETS.boss.src = 'boss.png';
 ASSETS.bossPoisoned.src = 'boss_poisoned.png';
 ASSETS.mendingWard.src = 'mending.png';
-ASSETS.tarPit.src = 'tar.png'; // Make sure the file is named tar.png
+ASSETS.tarPit.src = 'tar.png';
 
 const xpText = document.getElementById('xpText');
 const xpBarFill = document.getElementById('xpBarFill');
@@ -123,7 +123,7 @@ function loadSaveSlot(slotIndex) {
     };
     
     // Backwards compatibility 
-    if (savedData.upgrades.headStart !== undefined) delete savedData.upgrades.headStart; // Removed Head Start
+    if (savedData.upgrades.headStart !== undefined) delete savedData.upgrades.headStart; 
     for (let key in UPGRADE_DATA) { if (savedData.upgrades[key] === undefined) savedData.upgrades[key] = 0; }
     if (savedData.prestigePoints === undefined) savedData.prestigePoints = 0;
     if (savedData.unclaimedPlaytime === undefined) savedData.unclaimedPlaytime = 0;
@@ -387,14 +387,13 @@ function populatePrestigeShop() {
     container.innerHTML = '';
     
     if (!savedData.currentPrestigeShop || savedData.currentPrestigeShop.length === 0) {
-        let availableKeys = Object.keys(PRESTIGE_UPGRADE_DATA).filter(k => k !== 'trueEnding');
+        let availableKeys = Object.keys(PRESTIGE_UPGRADE_DATA);
         shuffleArray(availableKeys);
-        savedData.currentPrestigeShop = availableKeys.slice(0, 3);
+        savedData.currentPrestigeShop = availableKeys.slice(0, 4); // Show 4 random items
         saveGame();
     }
     
     let selectedKeys = [...savedData.currentPrestigeShop];
-    selectedKeys.push('trueEnding');
     
     selectedKeys.forEach(key => {
         const data = PRESTIGE_UPGRADE_DATA[key];
@@ -632,7 +631,7 @@ function populateShop() {
     shopContainer.innerHTML = '';
     let availableUpgrades = Object.keys(UPGRADE_DATA).filter(k => savedData.upgrades[k] < UPGRADE_DATA[k].maxLevel);
     
-    if (availableUpgrades.length === 0 && savedData.currentShop.length === 0) {
+    if (availableUpgrades.length === 0 && (!savedData.currentShop || savedData.currentShop.length === 0)) {
         shopContainer.innerHTML = '<h3 style="color: #4caf50;">You have maxed out all available upgrades!</h3>';
         return;
     }
@@ -671,6 +670,7 @@ function buyUpgrade(key, cost) {
     if (savedData.gold >= cost && savedData.upgrades[key] < UPGRADE_DATA[key].maxLevel) {
         savedData.gold -= cost;
         savedData.upgrades[key]++;
+        savedData.currentShop = []; // Clear selection to force a re-roll!
         saveGame();
         updateGoldUI();
         populateShop(); 
