@@ -112,6 +112,8 @@ function loadSaveSlot(slotIndex) {
             evocationMastery: 0, alchemistsTouch: 0, potentToxins: 0, splinteringWards: 0, arcaneFortitude: 0, mesmerizingGaze: 0,
             cursedLure: 0, arcaneOverload: 0, brittlePitch: 0, voltaicChain: 0, kineticRepulsion: 0
         },
+        currentShop: [],
+        currentPrestigeShop: [],
         prestigePoints: 0,
         unclaimedPlaytime: 0,
         unclaimedWins: 0,
@@ -130,6 +132,10 @@ function loadSaveSlot(slotIndex) {
     if (savedData.totalDeaths === undefined) savedData.totalDeaths = 0;
     for (let key in PRESTIGE_UPGRADE_DATA) { if (savedData.prestigeUpgrades[key] === undefined) savedData.prestigeUpgrades[key] = 0; }
     
+    // Check missing shop states for old saves
+    if (!savedData.currentShop) savedData.currentShop = [];
+    if (!savedData.currentPrestigeShop) savedData.currentPrestigeShop = [];
+
     saveGame();
     updateGoldUI();
     populateShop();
@@ -161,6 +167,8 @@ function updateGoldUI() {
     goldEl.innerText = savedData.gold;
     const hubGold = document.getElementById('hubTotalGoldEl');
     if (hubGold) hubGold.innerText = savedData.gold;
+    const prestigeHubGold = document.getElementById('prestigeHubGoldEl');
+    if (prestigeHubGold) prestigeHubGold.innerText = savedData.gold;
 }
 
 // --- METAPROGRESSION DATA ---
@@ -361,6 +369,10 @@ function doPrestige() {
             savedData.upgrades[key] = 0;
         }
         
+        // Reset shop states so they re-roll fresh
+        savedData.currentShop = [];
+        savedData.currentPrestigeShop = [];
+
         saveGame();
         updateGoldUI();
         updatePrestigeUI();
@@ -374,17 +386,21 @@ function populatePrestigeShop() {
     if (!container) return;
     container.innerHTML = '';
     
-    let availableKeys = Object.keys(PRESTIGE_UPGRADE_DATA).filter(k => k !== 'trueEnding');
+    if (!savedData.currentPrestigeShop || savedData.currentPrestigeShop.length === 0) {
+        let availableKeys = Object.keys(PRESTIGE_UPGRADE_DATA).filter(k => k !== 'trueEnding');
+        shuffleArray(availableKeys);
+        savedData.currentPrestigeShop = availableKeys.slice(0, 3);
+        saveGame();
+    }
     
-    shuffleArray(availableKeys);
-    let selectedKeys = availableKeys.slice(0, 3);
+    let selectedKeys = [...savedData.currentPrestigeShop];
     selectedKeys.push('trueEnding');
     
     selectedKeys.forEach(key => {
         const data = PRESTIGE_UPGRADE_DATA[key];
         const currentLvl = savedData.prestigeUpgrades[key] || 0;
-        const canAfford = savedData.prestigePoints >= data.cost;
         const isMaxed = currentLvl >= data.maxLevel;
+        const canAfford = savedData.prestigePoints >= data.cost && !isMaxed;
 
         const isTrueEnding = (key === 'trueEnding');
 
@@ -398,7 +414,7 @@ function populatePrestigeShop() {
                 <p>${data.desc}</p>
                 <p style="color: #ccc; font-size: 8px;">Level ${currentLvl} / ${data.maxLevel}</p>
             </div>
-            <button class="buy-btn prestige-btn" ${canAfford && !isMaxed ? '' : 'disabled'} onclick="buyPrestigeUpgrade('${key}')">
+            <button class="buy-btn prestige-btn" ${canAfford ? '' : 'disabled'} onclick="buyPrestigeUpgrade('${key}')">
                 ${isMaxed ? 'MAX' : data.cost + ' PP'}
             </button>
         `;
@@ -413,6 +429,16 @@ function buyPrestigeUpgrade(key) {
         savedData.prestigeUpgrades[key] = (savedData.prestigeUpgrades[key] || 0) + 1;
         saveGame();
         updatePrestigeUI();
+    }
+}
+
+function refreshPrestigeShop() {
+    if (savedData.gold >= 25) {
+        savedData.gold -= 25;
+        savedData.currentPrestigeShop = []; // Clear current selection
+        saveGame();
+        updateGoldUI();
+        updatePrestigeUI(); // This will trigger a re-roll in populatePrestigeShop
     }
 }
 
@@ -606,19 +632,24 @@ function populateShop() {
     shopContainer.innerHTML = '';
     let availableUpgrades = Object.keys(UPGRADE_DATA).filter(k => savedData.upgrades[k] < UPGRADE_DATA[k].maxLevel);
     
-    if (availableUpgrades.length === 0) {
+    if (availableUpgrades.length === 0 && savedData.currentShop.length === 0) {
         shopContainer.innerHTML = '<h3 style="color: #4caf50;">You have maxed out all available upgrades!</h3>';
         return;
     }
 
-    shuffleArray(availableUpgrades);
-    const chosenUpgrades = availableUpgrades.slice(0, 3); 
+    // Initialize or refill shop if it's empty
+    if (!savedData.currentShop || savedData.currentShop.length === 0) {
+        shuffleArray(availableUpgrades);
+        savedData.currentShop = availableUpgrades.slice(0, 3); 
+        saveGame();
+    }
 
-    chosenUpgrades.forEach(key => {
+    savedData.currentShop.forEach(key => {
         const data = UPGRADE_DATA[key];
         const currentLvl = savedData.upgrades[key];
         const cost = data.baseCost * (currentLvl + 1); 
-        const canAfford = savedData.gold >= cost;
+        const isMaxed = currentLvl >= data.maxLevel;
+        const canAfford = savedData.gold >= cost && !isMaxed;
 
         const card = document.createElement('div');
         card.className = 'upgrade-card';
@@ -629,7 +660,7 @@ function populateShop() {
                 <p style="color: #ccc; font-size: 8px;">Level ${currentLvl} / ${data.maxLevel}</p>
             </div>
             <button class="buy-btn" ${canAfford ? '' : 'disabled'} onclick="buyUpgrade('${key}', ${cost})">
-                ${cost} Gold
+                ${isMaxed ? 'MAX' : cost + ' Gold'}
             </button>
         `;
         shopContainer.appendChild(card);
@@ -649,9 +680,10 @@ function buyUpgrade(key, cost) {
 function refreshShop() {
     if (savedData.gold >= 1) {
         savedData.gold -= 1;
+        savedData.currentShop = []; // Clear current selection
         saveGame();
         updateGoldUI();
-        populateShop();
+        populateShop(); // This will trigger a re-roll
     }
 }
 

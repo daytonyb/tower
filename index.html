@@ -70,7 +70,7 @@
                     <h2 class="content-header" style="margin-bottom: 10px;">The Archmage's Shop</h2>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <p class="content-text" style="margin: 0;">Total Gold: <strong style="color: #ffd700;"><span id="hubTotalGoldEl">0</span></strong></p>
-                        <button class="start-btn" style="margin: 0; width: auto; padding: 10px; font-size: 10px; background: #f39c12; border-color: white;" onclick="refreshShop()">Reroll (-1 Gold)</button>
+                        <button class="start-btn" style="margin: 0; width: auto; padding: 10px; font-size: 10px; background: #f39c12; border-color: white;" onclick="refreshShop()">Reroll (1 Gold)</button>
                     </div>
                     <div id="shopContainer" class="card-container" style="justify-content: flex-start; flex-wrap: wrap;"></div>
                 </div>
@@ -91,9 +91,15 @@
                         </div>
                     </div>
                     
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px;">
-                        <h3 style="color: white; font-size: 12px; margin: 0;">Cosmic Upgrades</h3>
-                        <p class="content-text" style="font-size: 8px; color: #888; margin: 0;">Permanent powers and structures applied every run.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div>
+                            <h3 style="color: white; font-size: 12px; margin: 0;">Cosmic Upgrades</h3>
+                            <p class="content-text" style="font-size: 8px; color: #888; margin: 0; margin-top: 4px;">Permanent powers and structures applied every run.</p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <p class="content-text" style="margin: 0; font-size: 10px;">Gold: <strong style="color: #ffd700;"><span id="prestigeHubGoldEl">0</span></strong></p>
+                            <button class="start-btn" style="margin: 0; width: auto; padding: 10px; font-size: 10px; background: #f39c12; border-color: white;" onclick="refreshPrestigeShop()">Reroll (25 Gold)</button>
+                        </div>
                     </div>
                     
                     <div id="prestigeContainer" class="card-container" style="justify-content: flex-start; flex-wrap: wrap;"></div>
@@ -123,10 +129,11 @@
                 </div>
 
                 <div id="tab-patch" class="menu-tab-content">
-                    <h2 class="content-header">Patch Notes (v0.9.5)</h2>
+                    <h2 class="content-header">Patch Notes (v0.9.6)</h2>
                     <ul class="content-list">
-                        <li><strong style="color: #e51d1d;">Death Penalty:</strong>Removed the one gold death penalty.</li>
-                        <li><strong style="color: #f1e90c;">Gold, Gold, and more Gold:</strong>Players will now have 3 gold upon starting a run.</li>
+                        <li><strong style="color: #4a90e2;">Shop Rework:</strong> Shop and Prestige options no longer change randomly. You must pay Gold to refresh them, or trigger a Prestige!</li>
+                        <li><strong style="color: #e51d1d;">Death Penalty:</strong> Removed the one gold death penalty.</li>
+                        <li><strong style="color: #f1e90c;">Gold, Gold, and more Gold:</strong> Players will now have 3 gold upon starting a run.</li>
                     </ul>
                 </div>
 
