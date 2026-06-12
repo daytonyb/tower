@@ -18,8 +18,25 @@ const controlsTip = document.getElementById('controlsTip');
 const placementPhaseUI = document.getElementById('placementPhaseUI');
 const placementPhaseText = document.getElementById('placementPhaseText');
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+let gameScale = 1;
+let logicalWidth = window.innerWidth;
+let logicalHeight = window.innerHeight;
+
+function updateScaleAndDimensions() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // We use a baseline diagonal (1920x1080) to figure out how much to scale the game objects
+    const currentDiagonal = Math.sqrt(canvas.width * canvas.width + canvas.height * canvas.height);
+    const baseDiagonal = Math.sqrt(1920 * 1920 + 1080 * 1080);
+    
+    gameScale = currentDiagonal / baseDiagonal;
+    logicalWidth = canvas.width / gameScale;
+    logicalHeight = canvas.height / gameScale;
+}
+
+// Call initially
+updateScaleAndDimensions();
 
 // --- MENU & SAVE SYSTEM ---
 let currentSaveSlot = null;
@@ -61,28 +78,27 @@ function loadSaveSlot(slotIndex) {
         upgrades: { 
             deepPockets: 0, arcaneHaste: 0, volatileEmbers: 0, reinforcedWood: 0, viscousTar: 0, 
             serratedWire: 0, highVoltage: 0, toxicSpores: 0, deepSiphon: 0, blessedAura: 0, 
-            masonry: 0, scholarsInsight: 0, headStart: 0, 
+            masonry: 0, scholarsInsight: 0,
             evocationMastery: 0, alchemistsTouch: 0, potentToxins: 0, splinteringWards: 0, arcaneFortitude: 0, mesmerizingGaze: 0,
-            cursedLure: 0, arcaneOverload: 0
+            cursedLure: 0, arcaneOverload: 0, brittlePitch: 0, voltaicChain: 0, kineticRepulsion: 0
         },
         prestigePoints: 0,
         unclaimedPlaytime: 0,
         unclaimedWins: 0,
         totalPlaytime: 0,
         totalDeaths: 0,
-        prestigeUpgrades: { permBarricade: 0, permTar: 0, permWire: 0, permTesla: 0, permPlague: 0, permSoul: 0, permMending: 0, permCharm: 0, trueEnding: 0, goldenEpoch: 0, arcaneRicochet: 0, vampiricStrike: 0, soulBattery: 0, bountyHunter: 0, ironbark: 0, livingWood: 0, challengerBell: 0, temporalShift: 0, timeDilator: 0 }
+        prestigeUpgrades: { permBarricade: 0, permTar: 0, permWire: 0, permTesla: 0, permPlague: 0, permSoul: 0, permMending: 0, permCharm: 0, trueEnding: 0, goldenEpoch: 0, arcaneRicochet: 0, vampiricStrike: 0, soulBattery: 0, bountyHunter: 0, ironbark: 0, livingWood: 0, challengerBell: 0, temporalShift: 0, timeDilator: 0, chronoSurge: 0, bloodReckoning: 0, echoesOfPower: 0 }
     };
     
     // Backwards compatibility 
+    if (savedData.upgrades.headStart !== undefined) delete savedData.upgrades.headStart; // Removed Head Start
     for (let key in UPGRADE_DATA) { if (savedData.upgrades[key] === undefined) savedData.upgrades[key] = 0; }
     if (savedData.prestigePoints === undefined) savedData.prestigePoints = 0;
     if (savedData.unclaimedPlaytime === undefined) savedData.unclaimedPlaytime = 0;
     if (savedData.unclaimedWins === undefined) savedData.unclaimedWins = 0;
     if (savedData.totalPlaytime === undefined) savedData.totalPlaytime = 0;
     if (savedData.totalDeaths === undefined) savedData.totalDeaths = 0;
-    if (savedData.prestigeUpgrades === undefined || savedData.prestigeUpgrades.permBarricade === undefined) {
-        savedData.prestigeUpgrades = { permBarricade: 0, permTar: 0, permWire: 0, permTesla: 0, permPlague: 0, permSoul: 0, permMending: 0, permCharm: 0, trueEnding: 0, goldenEpoch: 0, arcaneRicochet: 0, vampiricStrike: 0, soulBattery: 0, bountyHunter: 0, ironbark: 0, livingWood: 0, challengerBell: 0, temporalShift: 0, timeDilator: 0 };
-    }
+    for (let key in PRESTIGE_UPGRADE_DATA) { if (savedData.prestigeUpgrades[key] === undefined) savedData.prestigeUpgrades[key] = 0; }
     
     saveGame();
     updateGoldUI();
@@ -120,26 +136,28 @@ function updateGoldUI() {
 // --- METAPROGRESSION DATA ---
 const UPGRADE_DATA = {
     deepPockets: { name: "Deep Pockets", desc: "+1 Max Ammo.", baseCost: 3, maxLevel: 5 },
-    arcaneHaste: { name: "Arcane Haste", desc: "Faster Recharge.", baseCost: 2, maxLevel: 5 },
-    volatileEmbers: { name: "Volatile Embers", desc: "+10% Radius.", baseCost: 5, maxLevel: 5 },
+    arcaneHaste: { name: "Arcane Haste", desc: "Faster Shot Recharge.", baseCost: 2, maxLevel: 5 },
+    volatileEmbers: { name: "Volatile Embers", desc: "+10% Shot Rad.", baseCost: 5, maxLevel: 5 },
     reinforcedWood: { name: "Reinforced Wood", desc: "+50 Wood HP.", baseCost: 2, maxLevel: 5 },
-    viscousTar: { name: "Viscous Tar", desc: "More Tar slow.", baseCost: 3, maxLevel: 3 },
+    viscousTar: { name: "Viscous Tar", desc: "Slower Tar.", baseCost: 3, maxLevel: 3 },
     serratedWire: { name: "Serrated Wire", desc: "+2 Wire Dmg.", baseCost: 1, maxLevel: 5 },
     highVoltage: { name: "High Voltage", desc: "+10 Tesla Dmg.", baseCost: 3, maxLevel: 5 },
     toxicSpores: { name: "Toxic Spores", desc: "+20 Plague Rad.", baseCost: 2, maxLevel: 5 },
-    deepSiphon: { name: "Deep Siphon", desc: "+0.5x XP Boost.", baseCost: 4, maxLevel: 4 },
+    deepSiphon: { name: "Deep Siphon", desc: "+0.5x Siphon Boost.", baseCost: 4, maxLevel: 4 },
     blessedAura: { name: "Blessed Aura", desc: "Faster Healing.", baseCost: 3, maxLevel: 4 },
     masonry: { name: "Masonry", desc: "+10 Tower HP.", baseCost: 1, maxLevel: 10 },
     scholarsInsight: { name: "Scholar", desc: "+5% XP gain.", baseCost: 4, maxLevel: 5 },
-    headStart: { name: "Head Start", desc: "Skip early levels.", baseCost: 10, maxLevel: 3 },
     evocationMastery: { name: "Evocation", desc: "+2 Click Dmg.", baseCost: 3, maxLevel: 5 },
     alchemistsTouch: { name: "Alchemist", desc: "Better gold drops.", baseCost: 5, maxLevel: 3 },
     potentToxins: { name: "Potent Toxins", desc: "More Poison Dmg.", baseCost: 4, maxLevel: 5 },
     splinteringWards: { name: "Splinter Wards", desc: "Exploding walls.", baseCost: 5, maxLevel: 3 },
-    arcaneFortitude: { name: "Arcane Fort", desc: "+25 Trap HP.", baseCost: 2, maxLevel: 5 },
-    mesmerizingGaze: { name: "Mesmerize", desc: "-1s Charm CD.", baseCost: 5, maxLevel: 5 },
+    arcaneFortitude: { name: "Arcane Fort", desc: "+25 Building HP.", baseCost: 2, maxLevel: 5 },
+    mesmerizingGaze: { name: "Mesmerize", desc: "-1s Mind CD.", baseCost: 5, maxLevel: 5 },
     cursedLure: { name: "Cursed Lure", desc: "Faster enemy spawns.", baseCost: 3, maxLevel: 5 },
-    arcaneOverload: { name: "Arcane Surge", desc: "5% Double XP chance.", baseCost: 5, maxLevel: 4 }
+    arcaneOverload: { name: "Arcane Surge", desc: "5% Double XP chance.", baseCost: 5, maxLevel: 4 },
+    brittlePitch: { name: "Brittle Pitch", desc: "Tar makes zombies weak.", baseCost: 4, maxLevel: 3 },
+    voltaicChain: { name: "Voltaic Chain", desc: "Tesla zaps +1 target.", baseCost: 5, maxLevel: 3 },
+    kineticRepulsion: { name: "Kinetic Repulse", desc: "Wall knockback.", baseCost: 3, maxLevel: 4 }
 };
 
 const PRESTIGE_UPGRADE_DATA = {
@@ -161,6 +179,9 @@ const PRESTIGE_UPGRADE_DATA = {
     challengerBell: { name: "Challenger's Bell", desc: "-1 Level req for Bosses.", cost: 10, maxLevel: 2 },
     temporalShift: { name: "Temporal Shift", desc: "-30s boss backup timer.", cost: 8, maxLevel: 5 },
     timeDilator: { name: "Time Dilator", desc: "+10% Game Speed per level.", cost: 15, maxLevel: 5 },
+    chronoSurge: { name: "Chrono-Surge", desc: "+50% Game speed until hit.", cost: 8, maxLevel: 3 },
+    bloodReckoning: { name: "Blood Reckoning", desc: "-10% Spawn delay, +15% XP.", cost: 6, maxLevel: 5 },
+    echoesOfPower: { name: "Echoes of Power", desc: "Start with +250 XP.", cost: 7, maxLevel: 5 },
     trueEnding: { name: "The Truth", desc: "Unlock the final mystery...", cost: 100, maxLevel: 1 }
 };
 
@@ -179,17 +200,19 @@ const BLUEPRINT_DB = {
 let maxHealth, health, maxAmmo, currentAmmo, rechargeRate, maxBlastRadius;
 let barricadeHP, tarSpeedMod, wireDamageBonus, teslaDamage, plagueRadius, soulMultiplier, mendingCooldown, xpMultiplier;
 let spellDamageBonus, goldDropThreshold, bossGoldBonus, poisonTickDamage, barricadeExplosionDamage, wardHPBonus, charmCooldown;
+let brittlePitchLevel = 0, voltaicChainLevel = 0, kineticRepulsionLevel = 0;
 
 // Prestige Scaling Variables
 let goldenEpochBonus, ricochetBounces, vampiricChance, soulBatteryReduction, bountyHunterBonus, ironbarkDamage, livingWoodRegen;
+let chronoSurgeActive = false, chronoSurgeMult = 1, bloodReckoningReduction = 0, echoesOfPowerXP = 0;
 
 // Pacing Variables
-let lureSpawnReduction = 0, overloadChance = 0, bossLevelThreshold = 5, bossTimerReduction = 0, timeDilationFactor = 1;
+let lureSpawnReduction = 0, overloadChance = 0, bossLevelThreshold = 5, bossTimerReduction = 0, baseTimeDilation = 1;
 
 let animationId, isPaused = false, isGameStarted = false, isPlacingPerms = false; 
 let survivalTimeMs = 0, lastFrameTime = Date.now(), formattedTime = "00:00";
 let level = 1, xp = 0, xpToNextLevel = 100, lastBossLevel = 0; 
-let killCount = 0, runGold = 0;
+let killCount = 0, runGold = 0, levelUpsQueued = 0;
 let nextBossTime = 300000; 
 
 let bossesKilled = 0;
@@ -202,8 +225,9 @@ let pendingPerms = [];
 const structures = [], spells = [], enemies = [], visualEffects = []; 
 let lastRechargeTime = 0;
 const restrictedRadius = 120; 
-let spawnTimer, mouseX = canvas.width / 2, mouseY = canvas.height / 2;
-const player = { x: canvas.width / 2, y: canvas.height / 2 };
+
+let spawnTimer, mouseX = logicalWidth / 2, mouseY = logicalHeight / 2;
+const player = { x: logicalWidth / 2, y: logicalHeight / 2 };
 
 function applyUpgrades() {
     maxHealth = 100 + (savedData.upgrades.masonry * 10);
@@ -220,7 +244,7 @@ function applyUpgrades() {
     soulMultiplier = 2 + (savedData.upgrades.deepSiphon * 0.5);
     mendingCooldown = 2000 - (savedData.upgrades.blessedAura * 250);
     xpMultiplier = (1 + (savedData.upgrades.scholarsInsight * 0.05));
-    level = 1 + savedData.upgrades.headStart;
+    level = 1;
     
     spellDamageBonus = savedData.upgrades.evocationMastery * 2;
     goldDropThreshold = 50 - (savedData.upgrades.alchemistsTouch * 5); 
@@ -229,6 +253,9 @@ function applyUpgrades() {
     barricadeExplosionDamage = savedData.upgrades.splinteringWards * 15;
     wardHPBonus = savedData.upgrades.arcaneFortitude * 25;
     charmCooldown = 10000 - (savedData.upgrades.mesmerizingGaze * 1000);
+    brittlePitchLevel = savedData.upgrades.brittlePitch || 0;
+    voltaicChainLevel = savedData.upgrades.voltaicChain || 0;
+    kineticRepulsionLevel = savedData.upgrades.kineticRepulsion || 0;
 
     goldenEpochBonus = (savedData.prestigeUpgrades.goldenEpoch || 0) * 2;
     ricochetBounces = (savedData.prestigeUpgrades.arcaneRicochet || 0);
@@ -238,17 +265,19 @@ function applyUpgrades() {
     ironbarkDamage = (savedData.prestigeUpgrades.ironbark || 0);
     livingWoodRegen = (savedData.prestigeUpgrades.livingWood || 0) * 5;
 
-    // NEW STANDARD UPGRADES
+    chronoSurgeMult = 1 + ((savedData.prestigeUpgrades.chronoSurge || 0) * 0.5);
+    bloodReckoningReduction = (savedData.prestigeUpgrades.bloodReckoning || 0) * 0.10;
+    echoesOfPowerXP = (savedData.prestigeUpgrades.echoesOfPower || 0) * 250;
+    chronoSurgeActive = (savedData.prestigeUpgrades.chronoSurge || 0) > 0;
+
     lureSpawnReduction = savedData.upgrades.cursedLure * 400; 
     overloadChance = savedData.upgrades.arcaneOverload * 0.05; 
 
-    // NEW PRESTIGE UPGRADES
     bossLevelThreshold = 5 - (savedData.prestigeUpgrades.challengerBell || 0); 
     bossTimerReduction = (savedData.prestigeUpgrades.temporalShift || 0) * 30000; 
-    timeDilationFactor = 1 + ((savedData.prestigeUpgrades.timeDilator || 0) * 0.1); 
+    baseTimeDilation = 1 + ((savedData.prestigeUpgrades.timeDilator || 0) * 0.1); 
     
     xpToNextLevel = 100;
-    for (let i = 1; i < level; i++) xpToNextLevel = Math.floor(xpToNextLevel * 1.4);
 }
 
 function updateAmmoUI() {
@@ -273,7 +302,10 @@ function updatePrestigeUI() {
     document.getElementById('unclaimedTimeEl').innerText = `${hours}h ${minutes}m`;
     document.getElementById('unclaimedWinsEl').innerText = savedData.unclaimedWins;
     
-    const pending = (hours * 1) + (savedData.unclaimedWins * 2);
+    const extraFromGold = Math.floor(savedData.gold / 100);
+    document.getElementById('goldConversionEl').innerText = extraFromGold;
+
+    const pending = (hours * 1) + (savedData.unclaimedWins * 2) + extraFromGold;
     document.getElementById('pendingPPEl').innerText = pending;
     
     populatePrestigeShop();
@@ -281,14 +313,15 @@ function updatePrestigeUI() {
 
 function doPrestige() {
     const hours = Math.floor(savedData.unclaimedPlaytime / 3600000);
-    const pending = (hours * 1) + (savedData.unclaimedWins * 2);
+    const extraFromGold = Math.floor(savedData.gold / 100);
+    const pending = (hours * 1) + (savedData.unclaimedWins * 2) + extraFromGold;
     
     if (pending <= 0) {
         alert("You don't have any pending Prestige Points to claim! Play more or beat the game to earn points.");
         return;
     }
 
-    if (confirm(`Are you sure you want to Prestige?\n\nYou will gain ${pending} Prestige Points, but you will LOSE ALL your Gold and Standard Upgrades. Your save slot progress will reset.`)) {
+    if (confirm(`Are you sure you want to Prestige?\n\nYou will gain ${pending} Prestige Points (including +${extraFromGold} from Gold conversion).\nYou will LOSE ALL your Gold and Standard Upgrades. Your save slot progress will reset.`)) {
         savedData.prestigePoints += pending;
         savedData.unclaimedPlaytime %= 3600000; 
         savedData.unclaimedWins = 0;
@@ -364,6 +397,7 @@ function startGame() {
     
     structures.length = 0; 
     pendingPerms = [];
+    levelUpsQueued = 0;
 
     for (let key in PRESTIGE_UPGRADE_DATA) {
         if (PRESTIGE_UPGRADE_DATA[key].type) {
@@ -407,7 +441,13 @@ function startActualRun() {
         updateGoldUI();
     }
 
-    spawnWave(); 
+    if (echoesOfPowerXP > 0) {
+        addXp(echoesOfPowerXP); 
+    }
+
+    if (levelUpsQueued === 0 && !isPaused) {
+        spawnWave();
+    }
 }
 
 function resetGame() {
@@ -439,6 +479,7 @@ function resetGame() {
     victoryAchieved = false;
     crystals.length = 0;
     pendingPerms = [];
+    levelUpsQueued = 0;
     
     survivalTimeMs = 0;
     formattedTime = "00:00";
@@ -513,13 +554,13 @@ function spawnCrystals(phase = 1) {
     if (phase === 2) crystalHp *= 1.5;
 
     const positions = [
-        { x: 100, y: 100 }, { x: canvas.width - 100, y: 100 },
-        { x: 100, y: canvas.height - 100 }, { x: canvas.width - 100, y: canvas.height - 100 }
+        { x: 100, y: 100 }, { x: logicalWidth - 100, y: 100 },
+        { x: 100, y: logicalHeight - 100 }, { x: logicalWidth - 100, y: logicalHeight - 100 }
     ];
 
     if (phase === 2) {
-        positions.push({ x: canvas.width / 2, y: 100 }); 
-        positions.push({ x: canvas.width / 2, y: canvas.height - 100 });
+        positions.push({ x: logicalWidth / 2, y: 100 }); 
+        positions.push({ x: logicalWidth / 2, y: logicalHeight - 100 });
     }
 
     positions.forEach(pos => { crystals.push({ x: pos.x, y: pos.y, radius: 35, hp: crystalHp, maxHp: crystalHp }); });
@@ -588,7 +629,11 @@ function refreshShop() {
 }
 
 // --- INPUT LISTENERS ---
-window.addEventListener('mousemove', (event) => { mouseX = event.clientX; mouseY = event.clientY; });
+window.addEventListener('mousemove', (event) => { 
+    mouseX = event.clientX / gameScale; 
+    mouseY = event.clientY / gameScale; 
+});
+
 window.addEventListener('wheel', (event) => { if (currentBlueprint) blueprintAngle += event.deltaY > 0 ? 0.2 : -0.2; });
 
 window.addEventListener('keydown', (event) => {
@@ -601,11 +646,16 @@ window.addEventListener('keydown', (event) => {
 
 // --- AUTO-RESIZE & SHIFT SCREEN ---
 window.addEventListener('resize', () => {
-    const oldWidth = canvas.width; const oldHeight = canvas.height;
-    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-    const diffX = (canvas.width - oldWidth) / 2; const diffY = (canvas.height - oldHeight) / 2;
+    const oldWidth = logicalWidth; 
+    const oldHeight = logicalHeight;
     
-    player.x = canvas.width / 2; player.y = canvas.height / 2;
+    updateScaleAndDimensions();
+    
+    const diffX = (logicalWidth - oldWidth) / 2; 
+    const diffY = (logicalHeight - oldHeight) / 2;
+    
+    player.x = logicalWidth / 2; 
+    player.y = logicalHeight / 2;
     
     structures.forEach(s => { s.x += diffX; s.y += diffY; });
     enemies.forEach(e => { e.x += diffX; e.y += diffY; });
@@ -621,7 +671,11 @@ window.addEventListener('resize', () => {
 window.addEventListener('click', (event) => {
     if (!isGameStarted || (isPaused && !currentBlueprint)) return; 
 
-    const distFromTower = Math.hypot(player.x - event.clientX, player.y - event.clientY);
+    // Convert raw click coordinates to scaled game coordinates
+    const clickX = event.clientX / gameScale;
+    const clickY = event.clientY / gameScale;
+
+    const distFromTower = Math.hypot(player.x - clickX, player.y - clickY);
 
     if (currentBlueprint) {
         if (distFromTower <= restrictedRadius) return; 
@@ -644,7 +698,7 @@ window.addEventListener('click', (event) => {
             radius = Math.max(radius * 0.75, 50); 
         }
 
-        structures.push({ type: currentBlueprint, x: event.clientX, y: event.clientY, w: w, h: h, angle: blueprintAngle, hp: hp, radius: radius, hitZombies: new Map(), lastTick: Date.now(), isPermanent: isPerm });
+        structures.push({ type: currentBlueprint, x: clickX, y: clickY, w: w, h: h, angle: blueprintAngle, hp: hp, radius: radius, hitZombies: new Map(), lastTick: Date.now(), isPermanent: isPerm });
 
         if (isPlacingPerms) {
             if (pendingPerms.length > 0) {
@@ -657,10 +711,14 @@ window.addEventListener('click', (event) => {
         } else {
             currentBlueprint = null; 
             controlsTip.style.display = 'none';
-            isPaused = false; 
-            lastFrameTime = Date.now();
-            lastPlaytimeSave = Date.now();
-            spawnWave(); 
+            if (levelUpsQueued > 0) {
+                processLevelUpQueue();
+            } else {
+                isPaused = false; 
+                lastFrameTime = Date.now();
+                lastPlaytimeSave = Date.now();
+                spawnWave(); 
+            }
         }
         return; 
     }
@@ -671,9 +729,9 @@ window.addEventListener('click', (event) => {
     currentAmmo--;
     updateAmmoUI();
 
-    const distToTarget = Math.hypot(event.clientX - player.x, event.clientY - player.y);
+    const distToTarget = Math.hypot(clickX - player.x, clickY - player.y);
     spells.push({
-        startX: player.x, startY: player.y, targetX: event.clientX, targetY: event.clientY, distance: distToTarget,
+        startX: player.x, startY: player.y, targetX: clickX, targetY: clickY, distance: distToTarget,
         progress: 0, arcHeight: Math.min(distToTarget * 0.4, 200), radius: 0, maxRadius: maxBlastRadius, state: 'flying', 
         hitEnemies: new Set(), bounces: ricochetBounces, bounceHistory: new Set()
     });
@@ -710,26 +768,39 @@ function showLevelUpMenu() {
     canvas.style.cursor = 'default'; 
 }
 
+function processLevelUpQueue() {
+    if (levelUpsQueued > 0) {
+        levelUpsQueued--;
+        showLevelUpMenu();
+    }
+}
+
 function addXp(amount) {
     xp += Math.floor(amount * xpMultiplier); 
-    if (xp >= xpToNextLevel) {
+    while (xp >= xpToNextLevel) {
         xp -= xpToNextLevel; 
         level++;
         xpToNextLevel = Math.floor(xpToNextLevel * 1.4); 
-        showLevelUpMenu();
+        levelUpsQueued++;
     }
     const xpPercent = Math.min(100, (xp / xpToNextLevel) * 100);
     xpBarFill.style.width = `${xpPercent}%`;
     xpText.innerHTML = `${xp} / ${xpToNextLevel}`;
+
+    if (levelUpsQueued > 0 && !isPaused && !currentBlueprint && !isPlacingPerms) {
+        processLevelUpQueue();
+    }
 }
 
 // --- ENEMY SPAWNING ---
 function spawnBossEnemy() {
     const angle = Math.random() * Math.PI * 2;
-    const x = player.x + Math.cos(angle) * (canvas.width / 2 + 100);
-    const y = player.y + Math.sin(angle) * (canvas.height / 2 + 100);
+    const x = player.x + Math.cos(angle) * (logicalWidth / 2 + 100);
+    const y = player.y + Math.sin(angle) * (logicalHeight / 2 + 100);
     const bossHp = 80 + (level * 15); 
-    enemies.push({ x, y, radius: 35, baseSpeed: 0.08, hp: bossHp, maxHp: bossHp, xpDrop: 200 + (level * 50), dead: false, isBoss: true, poisoned: false, charmed: false });
+    const baseBossXp = 200 + (level * 50);
+    const brMultiplier = 1 + (savedData.prestigeUpgrades.bloodReckoning || 0) * 0.15;
+    enemies.push({ x, y, radius: 35, baseSpeed: 0.08, hp: bossHp, maxHp: bossHp, xpDrop: Math.floor(baseBossXp * brMultiplier), dead: false, isBoss: true, poisoned: false, charmed: false, inTar: false });
 }
 
 function spawnWave() {
@@ -737,7 +808,8 @@ function spawnWave() {
     
     const minSpawn = Math.max(1000, 3000 - lureSpawnReduction);
     const maxSpawn = Math.max(2000, 7000 - lureSpawnReduction);
-    const nextSpawnDelay = Math.random() * (maxSpawn - minSpawn) + minSpawn;
+    const delayMult = Math.max(0.2, 1 - bloodReckoningReduction);
+    const nextSpawnDelay = (Math.random() * (maxSpawn - minSpawn) + minSpawn) * delayMult;
     
     if (level % bossLevelThreshold === 0 && lastBossLevel !== level) {
         lastBossLevel = level;
@@ -749,19 +821,22 @@ function spawnWave() {
 
         let groupX, groupY;
         if (Math.random() < 0.5) {
-            groupX = Math.random() < 0.5 ? -65 : canvas.width + 65;
-            groupY = Math.random() * canvas.height;
+            groupX = Math.random() < 0.5 ? -65 : logicalWidth + 65;
+            groupY = Math.random() * logicalHeight;
         } else {
-            groupX = Math.random() * canvas.width;
-            groupY = Math.random() < 0.5 ? -65 : canvas.height + 65;
+            groupX = Math.random() * logicalWidth;
+            groupY = Math.random() < 0.5 ? -65 : logicalHeight + 65;
         }
+
+        const brMultiplier = 1 + (savedData.prestigeUpgrades.bloodReckoning || 0) * 0.15;
 
         for (let i = 0; i < groupSize; i++) {
             const x = groupX + (Math.random() - 0.5) * 80;
             const y = groupY + (Math.random() - 0.5) * 80;
             const speed = (0.4 + Math.random() * 0.3) * speedMultiplier; 
             const hp = Math.floor((Math.random() * 11 + 5) * hpMultiplier);
-            enemies.push({ x, y, radius: 15, baseSpeed: speed, hp: hp, maxHp: hp, xpDrop: Math.floor(hp + (speed * 10)), dead: false, isBoss: false, poisoned: false, charmed: false });
+            const baseExp = Math.floor(hp + (speed * 10));
+            enemies.push({ x, y, radius: 15, baseSpeed: speed, hp: hp, maxHp: hp, xpDrop: Math.floor(baseExp * brMultiplier), dead: false, isBoss: false, poisoned: false, charmed: false, inTar: false });
         }
     }
     spawnTimer = setTimeout(spawnWave, nextSpawnDelay);
@@ -794,7 +869,8 @@ function animate() {
     animationId = requestAnimationFrame(animate);
     
     const currentFrameTime = Date.now();
-    const deltaTime = (currentFrameTime - lastFrameTime) * timeDilationFactor;
+    const activeTimeDilation = baseTimeDilation * (chronoSurgeActive ? chronoSurgeMult : 1);
+    const deltaTime = (currentFrameTime - lastFrameTime) * activeTimeDilation;
     lastFrameTime = currentFrameTime;
 
     if (!isPaused && isGameStarted && !isPlacingPerms) {
@@ -823,6 +899,10 @@ function animate() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Start scaled rendering
+    ctx.save();
+    ctx.scale(gameScale, gameScale);
+
     ctx.beginPath(); ctx.arc(player.x, player.y, restrictedRadius, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(255, 0, 0, 0.05)'; ctx.fill();
     ctx.strokeStyle = 'rgba(255, 0, 0, 0.4)'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]); 
@@ -839,13 +919,17 @@ function animate() {
                 }
             } else if (struct.type === 'tesla') {
                 if (currentFrameTime - struct.lastTick > 2000) {
-                    const inRange = enemies.filter(e => !e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius);
+                    let inRange = enemies.filter(e => !e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius);
                     if (inRange.length > 0) {
-                        const target = inRange[Math.floor(Math.random() * inRange.length)];
-                        target.hp -= teslaDamage; 
-                        if (target.hp <= 0) target.dead = true;
+                        inRange.sort(() => Math.random() - 0.5);
+                        const zapCount = Math.min(1 + voltaicChainLevel, inRange.length);
+                        for (let z = 0; z < zapCount; z++) {
+                            const target = inRange[z];
+                            target.hp -= (teslaDamage + (target.inTar ? brittlePitchLevel : 0)); 
+                            if (target.hp <= 0) target.dead = true;
+                            visualEffects.push({ type: 'lightning', x1: struct.x, y1: struct.y, x2: target.x, y2: target.y, expires: currentFrameTime + 150 });
+                        }
                         struct.lastTick = currentFrameTime;
-                        visualEffects.push({ type: 'lightning', x1: struct.x, y1: struct.y, x2: target.x, y2: target.y, expires: currentFrameTime + 150 });
                     }
                 }
             } else if (struct.type === 'plague') {
@@ -924,7 +1008,7 @@ function animate() {
             if (struct.type === 'barricade' && barricadeExplosionDamage > 0) {
                 enemies.forEach(e => {
                     if (!e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= 80) {
-                        e.hp -= barricadeExplosionDamage;
+                        e.hp -= (barricadeExplosionDamage + (e.inTar ? brittlePitchLevel : 0));
                         if (e.hp <= 0) e.dead = true;
                     }
                 });
@@ -952,7 +1036,7 @@ function animate() {
                     if (e.dead || e.charmed) return; 
                     if (Math.hypot(spell.targetX - e.x, spell.targetY - e.y) < spell.radius + e.radius && !spell.hitEnemies.has(e)) {
                         spell.hitEnemies.add(e); 
-                        e.hp -= (Math.floor(Math.random() * 4) + 3 + spellDamageBonus);
+                        e.hp -= (Math.floor(Math.random() * 4) + 3 + spellDamageBonus + (e.inTar ? brittlePitchLevel : 0));
                         if (e.hp <= 0) {
                             e.dead = true;
                             if (Math.random() < vampiricChance && health < maxHealth) {
@@ -1066,6 +1150,7 @@ function animate() {
             let speedModifier = 1;
             let hitTarget = null; 
             let targetAngle = Math.atan2(player.y - e.y, player.x - e.x);
+            e.inTar = false;
 
             if (e.charmed) {
                 speedModifier = 1.2;
@@ -1090,7 +1175,10 @@ function animate() {
             } else {
                 structures.forEach(struct => {
                     if (struct.type === 'tar') {
-                        if (getCollisionData(e, struct).collided) speedModifier = tarSpeedMod;
+                        if (getCollisionData(e, struct).collided) {
+                            speedModifier = tarSpeedMod;
+                            e.inTar = true;
+                        }
                     } else if (struct.type !== 'plague' && struct.type !== 'tesla' && struct.type !== 'charm') {
                         const col = getCollisionData(e, struct);
                         if (col.collided) {
@@ -1098,8 +1186,15 @@ function animate() {
                                 const lastHitTime = struct.hitZombies.get(e) || 0;
                                 if (currentFrameTime - lastHitTime >= 500) {
                                     struct.hitZombies.set(e, currentFrameTime);
-                                    e.hp -= (Math.floor(Math.random() * 6) + 5 + wireDamageBonus);
+                                    e.hp -= (Math.floor(Math.random() * 6) + 5 + wireDamageBonus + (e.inTar ? brittlePitchLevel : 0));
                                     if (e.hp <= 0) e.dead = true;
+                                }
+                            } else if (struct.type === 'barricade') {
+                                if (Math.random() < (kineticRepulsionLevel * 0.10)) {
+                                    e.x += col.normalX * 40;
+                                    e.y += col.normalY * 40;
+                                } else {
+                                    hitTarget = struct; e.x += col.normalX * col.overlap; e.y += col.normalY * col.overlap;
                                 }
                             } else {
                                 hitTarget = struct; e.x += col.normalX * col.overlap; e.y += col.normalY * col.overlap;
@@ -1117,7 +1212,11 @@ function animate() {
                 }
 
                 if (Math.hypot(player.x - e.x, player.y - e.y) - e.radius - 30 < 1) {
-                    enemies.splice(i, 1); health -= e.isBoss ? 40 : 10; updateHealthUI(); continue; 
+                    enemies.splice(i, 1); 
+                    health -= e.isBoss ? 40 : 10; 
+                    chronoSurgeActive = false; 
+                    updateHealthUI(); 
+                    continue; 
                 }
             }
 
@@ -1238,6 +1337,9 @@ function animate() {
         ctx.fillStyle = cannotShoot ? 'rgba(100, 100, 100, 0.2)' : 'rgba(255, 0, 0, 0.1)'; ctx.fill(); ctx.strokeStyle = cannotShoot ? 'rgba(100, 100, 100, 0.7)' : 'rgba(255, 0, 0, 0.7)'; ctx.lineWidth = 2; ctx.stroke();
         const xs = 10; ctx.beginPath(); ctx.moveTo(mouseX - xs, mouseY - xs); ctx.lineTo(mouseX + xs, mouseY + xs); ctx.moveTo(mouseX + xs, mouseY - xs); ctx.lineTo(mouseX - xs, mouseY + xs); ctx.stroke();
     }
+
+    // End scaled rendering
+    ctx.restore(); 
 }
 
 showSaveSelect();
