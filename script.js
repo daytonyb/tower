@@ -1,6 +1,15 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// Keep pixel art crisp
+ctx.imageSmoothingEnabled = false;
+
+// Load the assets
+const ASSETS = {
+    playerTower: new Image()
+};
+ASSETS.playerTower.src = 'tower.png';
+
 const xpText = document.getElementById('xpText');
 const xpBarFill = document.getElementById('xpBarFill');
 const timerDisplay = document.getElementById('timerDisplay');
@@ -26,13 +35,15 @@ function updateScaleAndDimensions() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
-    // We use a baseline diagonal (1920x1080) to figure out how much to scale the game objects
     const currentDiagonal = Math.sqrt(canvas.width * canvas.width + canvas.height * canvas.height);
     const baseDiagonal = Math.sqrt(1920 * 1920 + 1080 * 1080);
     
     gameScale = currentDiagonal / baseDiagonal;
     logicalWidth = canvas.width / gameScale;
     logicalHeight = canvas.height / gameScale;
+
+    // ADD THIS HERE: Keep pixel art crisp even after resizing
+    ctx.imageSmoothingEnabled = false;
 }
 
 // Call initially
@@ -1225,11 +1236,16 @@ function animate() {
         }
     }
 
-    const tw = 60, th = 80;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.beginPath(); ctx.ellipse(player.x, player.y + th/2, tw/2 + 10, 15, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#8a939e'; ctx.fillRect(player.x - tw/2, player.y - th/2, tw, th);
-    ctx.fillStyle = '#5c636a'; ctx.fillRect(player.x - tw/2, player.y - th/2 - 15, 15, 15); ctx.fillRect(player.x - tw/2 + 22.5, player.y - th/2 - 15, 15, 15); ctx.fillRect(player.x - tw/2 + 45, player.y - th/2 - 15, 15, 15);
-    ctx.fillStyle = '#3e2723'; ctx.beginPath(); ctx.arc(player.x, player.y + th/2 - 15, 15, Math.PI, 0); ctx.fill(); ctx.fillRect(player.x - 15, player.y + th/2 - 15, 30, 15);
+const tw = 60, th = 80;
+    
+    // Draw the shadow beneath the tower
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
+    ctx.beginPath(); 
+    ctx.ellipse(player.x, player.y + th/2, tw/2 + 10, 15, 0, 0, Math.PI * 2); 
+    ctx.fill();
+
+    // Draw the new pixel art tower
+    ctx.drawImage(ASSETS.playerTower, player.x - tw/2, player.y - th/2, tw, th);
 
     const hpW = 60, hpH = 8, hpX = player.x - hpW/2, hpY = player.y - th/2 - 30;
     ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'; ctx.fillRect(hpX, hpY, hpW, hpH);
