@@ -12,7 +12,8 @@ const ASSETS = {
     zombieCharmed: new Image(),
     poisonBubbles: new Image(),
     boss: new Image(),
-    bossPoisoned: new Image()
+    bossPoisoned: new Image(),
+    mendingWard: new Image()
 };
 
 // Make sure these match the filenames you saved them as!
@@ -23,6 +24,7 @@ ASSETS.zombieCharmed.src = 'zombie_charmed.png';
 ASSETS.poisonBubbles.src = 'bubbles.png'; 
 ASSETS.boss.src = 'boss.png';
 ASSETS.bossPoisoned.src = 'boss_poisoned.png';
+ASSETS.mendingWard.src = 'mending.png';
 
 const xpText = document.getElementById('xpText');
 const xpBarFill = document.getElementById('xpBarFill');
@@ -1014,9 +1016,14 @@ function animate() {
             if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.closePath(); ctx.stroke(); }
             ctx.fillStyle = 'rgba(170, 0, 255, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
         } else if (struct.type === 'mending') {
-            ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill();
-            if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.stroke(); }
-            ctx.fillStyle = 'white'; ctx.fillRect(-2, -10, 4, 20); ctx.fillRect(-10, -2, 20, 4);
+            if (ASSETS.mendingWard.complete && ASSETS.mendingWard.naturalHeight !== 0) {
+                ctx.drawImage(ASSETS.mendingWard, -15, -45, 30, 60);
+            }
+            if (struct.isPermanent) { 
+                ctx.strokeStyle = '#e040fb'; 
+                ctx.lineWidth = 2; 
+                ctx.strokeRect(-15, -15, 30, 30); 
+            }
         } else if (struct.type === 'charm') {
             ctx.fillStyle = '#29b6f6'; 
             ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.fill(); 
@@ -1396,7 +1403,22 @@ function animate() {
             else if (currentBlueprint === 'tesla') { ctx.fillStyle = 'rgba(0, 229, 255, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.stroke(); } ctx.fillStyle='rgba(0, 229, 255, 0.1)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
             else if (currentBlueprint === 'plague') { ctx.fillStyle = 'rgba(27, 94, 32, 0.7)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.closePath(); ctx.stroke(); } ctx.fillStyle='rgba(27, 94, 32, 0.2)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
             else if (currentBlueprint === 'soul') { ctx.fillStyle = 'rgba(170, 0, 255, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.closePath(); ctx.stroke(); } ctx.fillStyle='rgba(170, 0, 255, 0.1)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
-            else if (currentBlueprint === 'mending') { ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.stroke(); } }
+            else if (currentBlueprint === 'mending') { 
+                ctx.globalAlpha = 0.5;
+                if (ASSETS.mendingWard.complete && ASSETS.mendingWard.naturalHeight !== 0) {
+                    ctx.drawImage(ASSETS.mendingWard, -15, -45, 30, 60);
+                } else {
+                    ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; 
+                    ctx.fillRect(-15, -15, 30, 30); 
+                }
+                ctx.globalAlpha = 1.0;
+                
+                if(isPerm) { 
+                    ctx.strokeStyle='#e040fb'; 
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-15, -15, 30, 30); 
+                } 
+            }
             else if (currentBlueprint === 'charm') { 
                 ctx.fillStyle = 'rgba(41, 182, 246, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.fill(); 
                 ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.fill(); 
