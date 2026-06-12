@@ -1301,19 +1301,17 @@ function animate() {
         ctx.save(); 
         ctx.translate(e.x, e.y); 
         
-        // 1. Draw Health Bars 
-        const bW = e.isBoss ? 40 : 20, bO = e.isBoss ? -35 : -22;
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.8)'; ctx.fillRect(-bW/2, bO, bW, 4); 
-        ctx.fillStyle = '#76ff03'; ctx.fillRect(-bW/2, bO, bW * (e.hp / e.maxHp), 4); 
+        // --- 1. Draw the Sprite (Needs Rotation) ---
+        ctx.save();
         
-        // 2. Rotate the enemy to face their target (fixed for upwards-facing sprites)
+        // Rotate the enemy to face their target (fixed for upwards-facing sprites)
         if (e.charmed) { 
             ctx.rotate(Math.atan2(e.y - player.y, e.x - player.x) + Math.PI / 2); 
         } else { 
             ctx.rotate(Math.atan2(player.y - e.y, player.x - e.x) + Math.PI / 2); 
         }
         
-        // 3. Figure out the base image
+        // Figure out the base image
         let imgToDraw = e.isBoss ? ASSETS.boss : ASSETS.zombie;
         
         if (e.charmed) {
@@ -1326,12 +1324,12 @@ function animate() {
         const size = e.radius * 3; 
         const offset = -size / 2;
 
-        // 4. Draw the base zombie
+        // Draw the base zombie
         if (imgToDraw.complete && imgToDraw.naturalHeight !== 0) {
             ctx.drawImage(imgToDraw, offset, offset, size, size);
         }
 
-        // 5. If poisoned, draw the animated bubbles on top
+        // If poisoned, draw the animated bubbles on top
         if (e.poisoned && !e.charmed && ASSETS.poisonBubbles.width > 0) {
             const frameCount = 5; 
             const animationSpeed = 250; 
@@ -1346,8 +1344,18 @@ function animate() {
                 offset, offset, size, size                      
             );
         }
+        
+        ctx.restore(); // Restore from rotation so the health bar doesn't spin
 
-        ctx.restore(); 
+        // --- 2. Draw Health Bars (Drawn AFTER the image, so it stays on top) ---
+        const bW = e.isBoss ? 40 : 20;
+        // Dynamically calculate the Y offset so it hovers above the new chunky sprites
+        const bO = (e.radius * -1.5) - 10; 
+        
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.8)'; ctx.fillRect(-bW/2, bO, bW, 4); 
+        ctx.fillStyle = '#76ff03'; ctx.fillRect(-bW/2, bO, bW * (e.hp / e.maxHp), 4); 
+
+        ctx.restore(); // Restore from translation
     });
 
     crystals.forEach(c => {
