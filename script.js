@@ -13,7 +13,8 @@ const ASSETS = {
     poisonBubbles: new Image(),
     boss: new Image(),
     bossPoisoned: new Image(),
-    mendingWard: new Image()
+    mendingWard: new Image(),
+    tarPit: new Image() // Added the new tar pit image
 };
 
 // Make sure these match the filenames you saved them as!
@@ -25,6 +26,7 @@ ASSETS.poisonBubbles.src = 'bubbles.png';
 ASSETS.boss.src = 'boss.png';
 ASSETS.bossPoisoned.src = 'boss_poisoned.png';
 ASSETS.mendingWard.src = 'mending.png';
+ASSETS.tarPit.src = 'tar.png'; // Make sure the file is named tar.png
 
 const xpText = document.getElementById('xpText');
 const xpBarFill = document.getElementById('xpBarFill');
@@ -892,7 +894,6 @@ function getCollisionData(circle, rect) {
     return { collided: false };
 }
 
-// --- MAIN GAME LOOP ---
 function animate() {
     animationId = requestAnimationFrame(animate);
     
@@ -998,8 +999,17 @@ function animate() {
             ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#5C3317'; ctx.lineWidth = 3; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
             if (!struct.isPermanent && struct.hp < barricadeHP * 0.5) { ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(10, 5); ctx.stroke(); }
         } else if (struct.type === 'tar') {
-            ctx.fillStyle = 'rgba(30, 30, 30, 0.7)'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
-            ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#000000'; ctx.lineWidth = 2; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
+            if (ASSETS.tarPit.complete && ASSETS.tarPit.naturalHeight !== 0) {
+                ctx.drawImage(ASSETS.tarPit, -struct.w/2, -struct.h/2, struct.w, struct.h);
+            } else {
+                ctx.fillStyle = 'rgba(30, 30, 30, 0.7)'; 
+                ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
+            }
+            if (struct.isPermanent) {
+                ctx.strokeStyle = '#e040fb'; 
+                ctx.lineWidth = 2; 
+                ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
+            }
         } else if (struct.type === 'wire') {
             ctx.fillStyle = 'rgba(150, 150, 150, 0.3)'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
             ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#777777'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.setLineDash([]);
@@ -1398,7 +1408,20 @@ function animate() {
             ctx.fillRect(-w/2, -h/2, w, h); ctx.lineWidth = 2; ctx.strokeRect(-w/2, -h/2, w, h);
         } else {
             if (currentBlueprint === 'barricade') { ctx.fillStyle = 'rgba(139, 69, 19, 0.5)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); } 
-            else if (currentBlueprint === 'tar') { ctx.fillStyle = 'rgba(30, 30, 30, 0.5)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); } 
+            else if (currentBlueprint === 'tar') { 
+                ctx.globalAlpha = 0.5;
+                if (ASSETS.tarPit.complete && ASSETS.tarPit.naturalHeight !== 0) {
+                    ctx.drawImage(ASSETS.tarPit, -w/2, -h/2, w, h);
+                } else {
+                    ctx.fillStyle = 'rgba(30, 30, 30, 0.5)'; 
+                    ctx.fillRect(-w/2, -h/2, w, h); 
+                }
+                ctx.globalAlpha = 1.0;
+                
+                ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; 
+                ctx.lineWidth = 2; 
+                ctx.strokeRect(-w/2, -h/2, w, h); 
+            } 
             else if (currentBlueprint === 'wire') { ctx.fillStyle = 'rgba(150, 150, 150, 0.3)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.setLineDash([5, 5]); ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); }
             else if (currentBlueprint === 'tesla') { ctx.fillStyle = 'rgba(0, 229, 255, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.stroke(); } ctx.fillStyle='rgba(0, 229, 255, 0.1)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
             else if (currentBlueprint === 'plague') { ctx.fillStyle = 'rgba(27, 94, 32, 0.7)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.closePath(); ctx.stroke(); } ctx.fillStyle='rgba(27, 94, 32, 0.2)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
