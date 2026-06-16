@@ -17,7 +17,6 @@ const ASSETS = {
     tarPit: new Image()
 };
 
-// Make sure these match the filenames you saved them as!
 ASSETS.playerTower.src = 'tower.png';
 ASSETS.zombie.src = 'zombie.png';
 ASSETS.zombiePoisoned.src = 'zombie_poisoned.png';
@@ -53,7 +52,6 @@ function updateScaleAndDimensions() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
-    // We use a baseline diagonal (1920x1080) to figure out how much to scale the game objects
     const currentDiagonal = Math.sqrt(canvas.width * canvas.width + canvas.height * canvas.height);
     const baseDiagonal = Math.sqrt(1920 * 1920 + 1080 * 1080);
     
@@ -61,11 +59,9 @@ function updateScaleAndDimensions() {
     logicalWidth = canvas.width / gameScale;
     logicalHeight = canvas.height / gameScale;
 
-    // Keep pixel art crisp even after resizing
     ctx.imageSmoothingEnabled = false;
 }
 
-// Call initially
 updateScaleAndDimensions();
 
 // --- MENU & SAVE SYSTEM ---
@@ -105,13 +101,7 @@ function loadSaveSlot(slotIndex) {
     currentSaveSlot = slotIndex;
     savedData = JSON.parse(localStorage.getItem('roR_save_' + slotIndex)) || {
         gold: 3,
-        upgrades: { 
-            deepPockets: 0, arcaneHaste: 0, volatileEmbers: 0, reinforcedWood: 0, viscousTar: 0, 
-            serratedWire: 0, highVoltage: 0, toxicSpores: 0, deepSiphon: 0, blessedAura: 0, 
-            masonry: 0, scholarsInsight: 0,
-            evocationMastery: 0, alchemistsTouch: 0, potentToxins: 0, splinteringWards: 0, arcaneFortitude: 0, mesmerizingGaze: 0,
-            cursedLure: 0, arcaneOverload: 0, brittlePitch: 0, voltaicChain: 0, kineticRepulsion: 0
-        },
+        upgrades: {},
         currentShop: [],
         currentPrestigeShop: [],
         prestigePoints: 0,
@@ -119,10 +109,9 @@ function loadSaveSlot(slotIndex) {
         unclaimedWins: 0,
         totalPlaytime: 0,
         totalDeaths: 0,
-        prestigeUpgrades: { permBarricade: 0, permTar: 0, permWire: 0, permTesla: 0, permPlague: 0, permSoul: 0, permMending: 0, permCharm: 0, trueEnding: 0, goldenEpoch: 0, arcaneRicochet: 0, vampiricStrike: 0, soulBattery: 0, bountyHunter: 0, ironbark: 0, livingWood: 0, challengerBell: 0, temporalShift: 0, timeDilator: 0, chronoSurge: 0, bloodReckoning: 0, echoesOfPower: 0 }
+        prestigeUpgrades: {}
     };
     
-    // Backwards compatibility 
     if (savedData.upgrades.headStart !== undefined) delete savedData.upgrades.headStart; 
     for (let key in UPGRADE_DATA) { if (savedData.upgrades[key] === undefined) savedData.upgrades[key] = 0; }
     if (savedData.prestigePoints === undefined) savedData.prestigePoints = 0;
@@ -132,7 +121,6 @@ function loadSaveSlot(slotIndex) {
     if (savedData.totalDeaths === undefined) savedData.totalDeaths = 0;
     for (let key in PRESTIGE_UPGRADE_DATA) { if (savedData.prestigeUpgrades[key] === undefined) savedData.prestigeUpgrades[key] = 0; }
     
-    // Check missing shop states for old saves
     if (!savedData.currentShop) savedData.currentShop = [];
     if (!savedData.currentPrestigeShop) savedData.currentPrestigeShop = [];
 
@@ -195,7 +183,13 @@ const UPGRADE_DATA = {
     arcaneOverload: { name: "Arcane Surge", desc: "5% Double XP chance.", baseCost: 5, maxLevel: 4 },
     brittlePitch: { name: "Brittle Pitch", desc: "Tar makes zombies weak.", baseCost: 4, maxLevel: 3 },
     voltaicChain: { name: "Voltaic Chain", desc: "Tesla zaps +1 target.", baseCost: 5, maxLevel: 3 },
-    kineticRepulsion: { name: "Kinetic Repulse", desc: "Wall knockback.", baseCost: 3, maxLevel: 4 }
+    kineticRepulsion: { name: "Kinetic Repulse", desc: "Wall knockback.", baseCost: 3, maxLevel: 4 },
+    galeForce: { name: "Gale Force", desc: "+10% Wind knockback.", baseCost: 3, maxLevel: 5 },
+    loudCarvings: { name: "Loud Carvings", desc: "+15px Taunt Radius.", baseCost: 2, maxLevel: 4 },
+    deepFreeze: { name: "Deep Freeze", desc: "+0.5s Freeze Duration.", baseCost: 4, maxLevel: 4 },
+    resonantGem: { name: "Resonant Gem", desc: "+10% Focus Crystal rad.", baseCost: 5, maxLevel: 5 },
+    transmutation: { name: "Transmutation", desc: "+0.5% Crucible gold chance.", baseCost: 5, maxLevel: 4 },
+    astralPayload: { name: "Astral Payload", desc: "+15% Meteor radius.", baseCost: 6, maxLevel: 5 }
 };
 
 const PRESTIGE_UPGRADE_DATA = {
@@ -220,6 +214,12 @@ const PRESTIGE_UPGRADE_DATA = {
     chronoSurge: { name: "Chrono-Surge", desc: "+50% Game speed until hit.", cost: 8, maxLevel: 3 },
     bloodReckoning: { name: "Blood Reckoning", desc: "-10% Spawn delay, +15% XP.", cost: 6, maxLevel: 5 },
     echoesOfPower: { name: "Echoes of Power", desc: "Start with +250 XP.", cost: 7, maxLevel: 5 },
+    cuttingWinds: { name: "Cutting Winds", desc: "Wind glyph deals 2 dmg.", cost: 6, maxLevel: 3 },
+    splinteringMockery: { name: "Splintering Mockery", desc: "Decoy slows on death.", cost: 5, maxLevel: 1 },
+    shatterStrike: { name: "Shatter Strike", desc: "2x spell dmg to frozen zombies.", cost: 8, maxLevel: 1 },
+    prismaticBeam: { name: "Prismatic Beam", desc: "Focus crystal spells bounce +1.", cost: 10, maxLevel: 2 },
+    philosophersStone: { name: "Philosopher's Stone", desc: "Crucible gold drops heal 1 HP.", cost: 15, maxLevel: 1 },
+    scorchedEarth: { name: "Scorched Earth", desc: "Meteor leaves a fire pool.", cost: 12, maxLevel: 1 },
     trueEnding: { name: "The Truth", desc: "Unlock the final mystery...", cost: 100, maxLevel: 1 }
 };
 
@@ -231,7 +231,13 @@ const BLUEPRINT_DB = {
     plague: { name: 'Plague Totem', desc: 'Poisons zombies.' },
     soul: { name: 'Soul Siphon', desc: 'Bonus XP nearby.' },
     mending: { name: 'Mending Ward', desc: 'Heals the tower.' },
-    charm: { name: 'Mind Ward', desc: 'Converts zombies.' }
+    charm: { name: 'Mind Ward', desc: 'Converts zombies.' },
+    wind: { name: 'Wind Glyph', desc: 'Knocks back zombies.' },
+    decoy: { name: 'Decoy Totem', desc: 'Draws nearby zombies.' },
+    frost: { name: 'Frost Ward', desc: 'Freezes zombies.' },
+    focus: { name: 'Focus Crystal', desc: 'Buffs spells aimed here.' },
+    crucible: { name: 'Crucible', desc: 'Chance for gold drops.' },
+    meteor: { name: 'Meteor Beacon', desc: 'Explodes when destroyed.' }
 };
 
 // --- RUN VARIABLES ---
@@ -239,6 +245,9 @@ let maxHealth, health, maxAmmo, currentAmmo, rechargeRate, maxBlastRadius;
 let barricadeHP, tarSpeedMod, wireDamageBonus, teslaDamage, plagueRadius, soulMultiplier, mendingCooldown, xpMultiplier;
 let spellDamageBonus, goldDropThreshold, bossGoldBonus, poisonTickDamage, barricadeExplosionDamage, wardHPBonus, charmCooldown;
 let brittlePitchLevel = 0, voltaicChainLevel = 0, kineticRepulsionLevel = 0;
+
+let galeForceLevel = 0, loudCarvingsLevel = 0, deepFreezeLevel = 0, resonantGemLevel = 0, transmutationLevel = 0, astralPayloadLevel = 0;
+let cuttingWindsDmg = 0, splinteringMockeryActive = false, shatterStrikeActive = false, prismaticBeamBounces = 0, philosophersStoneActive = false, scorchedEarthActive = false;
 
 // Prestige Scaling Variables
 let goldenEpochBonus, ricochetBounces, vampiricChance, soulBatteryReduction, bountyHunterBonus, ironbarkDamage, livingWoodRegen;
@@ -295,6 +304,13 @@ function applyUpgrades() {
     voltaicChainLevel = savedData.upgrades.voltaicChain || 0;
     kineticRepulsionLevel = savedData.upgrades.kineticRepulsion || 0;
 
+    galeForceLevel = savedData.upgrades.galeForce || 0;
+    loudCarvingsLevel = savedData.upgrades.loudCarvings || 0;
+    deepFreezeLevel = savedData.upgrades.deepFreeze || 0;
+    resonantGemLevel = savedData.upgrades.resonantGem || 0;
+    transmutationLevel = savedData.upgrades.transmutation || 0;
+    astralPayloadLevel = savedData.upgrades.astralPayload || 0;
+
     goldenEpochBonus = (savedData.prestigeUpgrades.goldenEpoch || 0) * 2;
     ricochetBounces = (savedData.prestigeUpgrades.arcaneRicochet || 0);
     vampiricChance = (savedData.prestigeUpgrades.vampiricStrike || 0) * 0.02;
@@ -307,6 +323,13 @@ function applyUpgrades() {
     bloodReckoningReduction = (savedData.prestigeUpgrades.bloodReckoning || 0) * 0.10;
     echoesOfPowerXP = (savedData.prestigeUpgrades.echoesOfPower || 0) * 250;
     chronoSurgeActive = (savedData.prestigeUpgrades.chronoSurge || 0) > 0;
+
+    cuttingWindsDmg = (savedData.prestigeUpgrades.cuttingWinds || 0) * 2;
+    splinteringMockeryActive = (savedData.prestigeUpgrades.splinteringMockery || 0) > 0;
+    shatterStrikeActive = (savedData.prestigeUpgrades.shatterStrike || 0) > 0;
+    prismaticBeamBounces = (savedData.prestigeUpgrades.prismaticBeam || 0);
+    philosophersStoneActive = (savedData.prestigeUpgrades.philosophersStone || 0) > 0;
+    scorchedEarthActive = (savedData.prestigeUpgrades.scorchedEarth || 0) > 0;
 
     lureSpawnReduction = savedData.upgrades.cursedLure * 400; 
     overloadChance = savedData.upgrades.arcaneOverload * 0.05; 
@@ -369,7 +392,6 @@ function doPrestige() {
             savedData.upgrades[key] = 0;
         }
         
-        // Reset shop states so they re-roll fresh
         savedData.currentShop = [];
         savedData.currentPrestigeShop = [];
 
@@ -389,7 +411,7 @@ function populatePrestigeShop() {
     if (!savedData.currentPrestigeShop || savedData.currentPrestigeShop.length === 0) {
         let availableKeys = Object.keys(PRESTIGE_UPGRADE_DATA);
         shuffleArray(availableKeys);
-        savedData.currentPrestigeShop = availableKeys.slice(0, 4); // Show 4 random items
+        savedData.currentPrestigeShop = availableKeys.slice(0, 4); 
         saveGame();
     }
     
@@ -434,10 +456,10 @@ function buyPrestigeUpgrade(key) {
 function refreshPrestigeShop() {
     if (savedData.gold >= 25) {
         savedData.gold -= 25;
-        savedData.currentPrestigeShop = []; // Clear current selection
+        savedData.currentPrestigeShop = [];
         saveGame();
         updateGoldUI();
-        updatePrestigeUI(); // This will trigger a re-roll in populatePrestigeShop
+        updatePrestigeUI(); 
     }
 }
 
@@ -636,7 +658,6 @@ function populateShop() {
         return;
     }
 
-    // Initialize or refill shop if it's empty
     if (!savedData.currentShop || savedData.currentShop.length === 0) {
         shuffleArray(availableUpgrades);
         savedData.currentShop = availableUpgrades.slice(0, 3); 
@@ -670,7 +691,7 @@ function buyUpgrade(key, cost) {
     if (savedData.gold >= cost && savedData.upgrades[key] < UPGRADE_DATA[key].maxLevel) {
         savedData.gold -= cost;
         savedData.upgrades[key]++;
-        savedData.currentShop = []; // Clear selection to force a re-roll!
+        savedData.currentShop = []; 
         saveGame();
         updateGoldUI();
         populateShop(); 
@@ -680,10 +701,10 @@ function buyUpgrade(key, cost) {
 function refreshShop() {
     if (savedData.gold >= 1) {
         savedData.gold -= 1;
-        savedData.currentShop = []; // Clear current selection
+        savedData.currentShop = []; 
         saveGame();
         updateGoldUI();
-        populateShop(); // This will trigger a re-roll
+        populateShop(); 
     }
 }
 
@@ -730,7 +751,6 @@ window.addEventListener('resize', () => {
 window.addEventListener('click', (event) => {
     if (!isGameStarted || (isPaused && !currentBlueprint)) return; 
 
-    // Convert raw click coordinates to scaled game coordinates
     const clickX = event.clientX / gameScale;
     const clickY = event.clientY / gameScale;
 
@@ -748,6 +768,12 @@ window.addEventListener('click', (event) => {
         else if (currentBlueprint === 'soul') { w = 30; h = 30; radius = 150; hp = 50 + wardHPBonus; }
         else if (currentBlueprint === 'mending') { w = 30; h = 30; hp = 50 + wardHPBonus; }
         else if (currentBlueprint === 'charm') { w = 30; h = 30; radius = 150; hp = 50 + wardHPBonus; }
+        else if (currentBlueprint === 'wind') { w = 30; h = 30; radius = 100; hp = 50 + wardHPBonus; }
+        else if (currentBlueprint === 'decoy') { w = 30; h = 60; radius = 150 + (loudCarvingsLevel * 15); hp = 150 + wardHPBonus; }
+        else if (currentBlueprint === 'frost') { w = 120; h = 120; }
+        else if (currentBlueprint === 'focus') { w = 40; h = 40; radius = 100 * (1 + (resonantGemLevel * 0.1)); hp = 30 + wardHPBonus; }
+        else if (currentBlueprint === 'crucible') { w = 50; h = 50; radius = 120; hp = 80 + wardHPBonus; }
+        else if (currentBlueprint === 'meteor') { w = 60; h = 60; hp = 200 + wardHPBonus; radius = 300 * (1 + (astralPayloadLevel * 0.15)); }
 
         let isPerm = isPlacingPerms;
         if (isPerm) {
@@ -789,10 +815,23 @@ window.addEventListener('click', (event) => {
     updateAmmoUI();
 
     const distToTarget = Math.hypot(clickX - player.x, clickY - player.y);
+    let localDamageBonus = spellDamageBonus;
+    let localBlastRadius = maxBlastRadius;
+    let localBounces = ricochetBounces;
+    
+    // Check Focusing Crystal buffs
+    structures.forEach(s => {
+        if (s.type === 'focus' && Math.hypot(clickX - s.x, clickY - s.y) <= s.radius) {
+            localDamageBonus += Math.floor(spellDamageBonus * 0.5) + 3; 
+            localBlastRadius *= 1.5;
+            localBounces += prismaticBeamBounces;
+        }
+    });
+
     spells.push({
         startX: player.x, startY: player.y, targetX: clickX, targetY: clickY, distance: distToTarget,
-        progress: 0, arcHeight: Math.min(distToTarget * 0.4, 200), radius: 0, maxRadius: maxBlastRadius, state: 'flying', 
-        hitEnemies: new Set(), bounces: ricochetBounces, bounceHistory: new Set()
+        progress: 0, arcHeight: Math.min(distToTarget * 0.4, 200), radius: 0, maxRadius: localBlastRadius, state: 'flying', 
+        hitEnemies: new Set(), bounces: localBounces, bounceHistory: new Set(), damageBonus: localDamageBonus
     });
 });
 
@@ -859,7 +898,7 @@ function spawnBossEnemy() {
     const bossHp = 80 + (level * 15); 
     const baseBossXp = 200 + (level * 50);
     const brMultiplier = 1 + (savedData.prestigeUpgrades.bloodReckoning || 0) * 0.15;
-    enemies.push({ x, y, radius: 35, baseSpeed: 0.08, hp: bossHp, maxHp: bossHp, xpDrop: Math.floor(baseBossXp * brMultiplier), dead: false, isBoss: true, poisoned: false, charmed: false, inTar: false });
+    enemies.push({ x, y, radius: 35, baseSpeed: 0.08, hp: bossHp, maxHp: bossHp, xpDrop: Math.floor(baseBossXp * brMultiplier), dead: false, isBoss: true, poisoned: false, charmed: false, inTar: false, chill: 0, frozen: 0, splinterSlow: 0 });
 }
 
 function spawnWave() {
@@ -895,7 +934,7 @@ function spawnWave() {
             const speed = (0.4 + Math.random() * 0.3) * speedMultiplier; 
             const hp = Math.floor((Math.random() * 11 + 5) * hpMultiplier);
             const baseExp = Math.floor(hp + (speed * 10));
-            enemies.push({ x, y, radius: 15, baseSpeed: speed, hp: hp, maxHp: hp, xpDrop: Math.floor(baseExp * brMultiplier), dead: false, isBoss: false, poisoned: false, charmed: false, inTar: false });
+            enemies.push({ x, y, radius: 15, baseSpeed: speed, hp: hp, maxHp: hp, xpDrop: Math.floor(baseExp * brMultiplier), dead: false, isBoss: false, poisoned: false, charmed: false, inTar: false, chill: 0, frozen: 0, splinterSlow: 0 });
         }
     }
     spawnTimer = setTimeout(spawnWave, nextSpawnDelay);
@@ -957,7 +996,6 @@ function animate() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Start scaled rendering
     ctx.save();
     ctx.scale(gameScale, gameScale);
 
@@ -967,6 +1005,11 @@ function animate() {
 
     for (let i = structures.length - 1; i >= 0; i--) {
         const struct = structures[i];
+
+        if (struct.expires && currentFrameTime > struct.expires) {
+            structures.splice(i, 1); 
+            continue;
+        }
         
         if (!isPaused && isGameStarted && !isPlacingPerms) {
             if (struct.type === 'barricade' && livingWoodRegen > 0) {
@@ -992,6 +1035,30 @@ function animate() {
                 }
             } else if (struct.type === 'plague') {
                 enemies.forEach(e => { if (!e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) e.poisoned = true; });
+            } else if (struct.type === 'wind') {
+                if (currentFrameTime - struct.lastTick > 3000) {
+                    enemies.forEach(e => {
+                        let dist = Math.hypot(e.x - struct.x, e.y - struct.y);
+                        if (dist <= struct.radius && !e.charmed) {
+                            let angle = Math.atan2(e.y - struct.y, e.x - struct.x);
+                            e.x += Math.cos(angle) * (50 + galeForceLevel * 10);
+                            e.y += Math.sin(angle) * (50 + galeForceLevel * 10);
+                            if (cuttingWindsDmg > 0) {
+                                e.hp -= cuttingWindsDmg;
+                                if (e.hp <= 0) e.dead = true;
+                            }
+                        }
+                    });
+                    visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: struct.radius, expires: currentFrameTime + 200, color: 'rgba(255, 255, 255, 0.4)' });
+                    struct.lastTick = currentFrameTime;
+                }
+            } else if (struct.type === 'fire_pool') {
+                enemies.forEach(e => {
+                    if (!e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.w) { 
+                        e.hp -= 0.5; 
+                        if (e.hp <= 0) e.dead = true;
+                    }
+                });
             } else if (struct.type === 'mending' || struct.type === 'charm') {
                 let localCdMult = 1;
                 if (soulBatteryReduction > 0) {
@@ -1028,17 +1095,9 @@ function animate() {
             ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#5C3317'; ctx.lineWidth = 3; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
             if (!struct.isPermanent && struct.hp < barricadeHP * 0.5) { ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(10, 5); ctx.stroke(); }
         } else if (struct.type === 'tar') {
-            if (ASSETS.tarPit.complete && ASSETS.tarPit.naturalHeight !== 0) {
-                ctx.drawImage(ASSETS.tarPit, -struct.w/2, -struct.h/2, struct.w, struct.h);
-            } else {
-                ctx.fillStyle = 'rgba(30, 30, 30, 0.7)'; 
-                ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
-            }
-            if (struct.isPermanent) {
-                ctx.strokeStyle = '#e040fb'; 
-                ctx.lineWidth = 2; 
-                ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
-            }
+            if (ASSETS.tarPit.complete && ASSETS.tarPit.naturalHeight !== 0) { ctx.drawImage(ASSETS.tarPit, -struct.w/2, -struct.h/2, struct.w, struct.h); } 
+            else { ctx.fillStyle = 'rgba(30, 30, 30, 0.7)'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h); }
+            if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); }
         } else if (struct.type === 'wire') {
             ctx.fillStyle = 'rgba(150, 150, 150, 0.3)'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
             ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#777777'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.setLineDash([]);
@@ -1055,28 +1114,42 @@ function animate() {
             if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.closePath(); ctx.stroke(); }
             ctx.fillStyle = 'rgba(170, 0, 255, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
         } else if (struct.type === 'mending') {
-            if (ASSETS.mendingWard.complete && ASSETS.mendingWard.naturalHeight !== 0) {
-                ctx.drawImage(ASSETS.mendingWard, -15, -45, 30, 60);
-            }
-            if (struct.isPermanent) { 
-                ctx.strokeStyle = '#e040fb'; 
-                ctx.lineWidth = 2; 
-                ctx.strokeRect(-15, -15, 30, 30); 
-            }
+            if (ASSETS.mendingWard.complete && ASSETS.mendingWard.naturalHeight !== 0) { ctx.drawImage(ASSETS.mendingWard, -15, -45, 30, 60); }
+            if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.strokeRect(-15, -15, 30, 30); }
         } else if (struct.type === 'charm') {
-            ctx.fillStyle = '#29b6f6'; 
-            ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.fill(); 
-            ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.fill(); 
-            if (struct.isPermanent) { 
-                ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; 
-                ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.closePath(); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.closePath(); ctx.stroke();
-            }
+            ctx.fillStyle = '#29b6f6'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.fill(); 
+            if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.closePath(); ctx.stroke(); }
             ctx.fillStyle = 'rgba(41, 182, 246, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
+        } else if (struct.type === 'wind') {
+            ctx.fillStyle = '#b0bec5'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill();
+            if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.stroke(); }
+            ctx.fillStyle = 'rgba(176, 190, 197, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
+        } else if (struct.type === 'decoy') {
+            ctx.fillStyle = '#5d4037'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
+            ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#8d6e63'; ctx.lineWidth = 2; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
+            ctx.strokeStyle = 'rgba(93, 64, 55, 0.2)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.stroke();
+        } else if (struct.type === 'frost') {
+            ctx.fillStyle = 'rgba(129, 212, 250, 0.5)'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
+            ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#4fc3f7'; ctx.lineWidth = 2; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h);
+        } else if (struct.type === 'focus') {
+            ctx.fillStyle = '#ce93d8'; ctx.beginPath(); ctx.moveTo(0, -struct.h/2); ctx.lineTo(struct.w/2, 0); ctx.lineTo(0, struct.h/2); ctx.lineTo(-struct.w/2, 0); ctx.fill();
+            if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -struct.h/2); ctx.lineTo(struct.w/2, 0); ctx.lineTo(0, struct.h/2); ctx.lineTo(-struct.w/2, 0); ctx.closePath(); ctx.stroke(); }
+            ctx.fillStyle = 'rgba(206, 147, 216, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
+        } else if (struct.type === 'crucible') {
+            ctx.fillStyle = '#424242'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#ffca28'; ctx.beginPath(); ctx.arc(0, 0, struct.w/4, 0, Math.PI*2); ctx.fill();
+            if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.stroke(); }
+            ctx.fillStyle = 'rgba(255, 202, 40, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill();
+        } else if (struct.type === 'meteor') {
+            ctx.fillStyle = '#ff7043'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill();
+            if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.stroke(); }
+        } else if (struct.type === 'fire_pool') {
+            ctx.fillStyle = 'rgba(255, 87, 34, 0.4)'; ctx.beginPath(); ctx.arc(0, 0, struct.w, 0, Math.PI*2); ctx.fill();
         }
+        
         ctx.restore();
         
-        if (struct.hp <= 0 && !struct.isPermanent) {
+        if (struct.hp <= 0 && !struct.isPermanent && struct.type !== 'fire_pool') {
             if (struct.type === 'barricade' && barricadeExplosionDamage > 0) {
                 enemies.forEach(e => {
                     if (!e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= 80) {
@@ -1084,7 +1157,25 @@ function animate() {
                         if (e.hp <= 0) e.dead = true;
                     }
                 });
-                visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: 80, expires: currentFrameTime + 200 });
+                visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: 80, expires: currentFrameTime + 200, color: 'rgba(255, 69, 0, 0.5)' });
+            } else if (struct.type === 'meteor') {
+                enemies.forEach(e => {
+                    if (Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) {
+                        e.hp -= 500; 
+                        if (e.hp <= 0) e.dead = true;
+                    }
+                });
+                visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: struct.radius, expires: currentFrameTime + 500, color: 'rgba(255, 112, 67, 0.8)' });
+                if (scorchedEarthActive) {
+                    structures.push({ type: 'fire_pool', x: struct.x, y: struct.y, w: struct.radius, h: struct.radius, hp: 9999, expires: currentFrameTime + 5000 });
+                }
+            } else if (struct.type === 'decoy' && splinteringMockeryActive) {
+                enemies.forEach(e => {
+                    if (Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) {
+                        e.splinterSlow = 3000;
+                    }
+                });
+                visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: struct.radius, expires: currentFrameTime + 200, color: 'rgba(141, 110, 99, 0.5)' });
             }
             structures.splice(i, 1); 
         }
@@ -1108,7 +1199,10 @@ function animate() {
                     if (e.dead || e.charmed) return; 
                     if (Math.hypot(spell.targetX - e.x, spell.targetY - e.y) < spell.radius + e.radius && !spell.hitEnemies.has(e)) {
                         spell.hitEnemies.add(e); 
-                        e.hp -= (Math.floor(Math.random() * 4) + 3 + spellDamageBonus + (e.inTar ? brittlePitchLevel : 0));
+                        let dmg = Math.floor(Math.random() * 4) + 3 + spell.damageBonus + (e.inTar ? brittlePitchLevel : 0);
+                        if (shatterStrikeActive && e.frozen > 0) dmg *= 2;
+
+                        e.hp -= dmg;
                         if (e.hp <= 0) {
                             e.dead = true;
                             if (Math.random() < vampiricChance && health < maxHealth) {
@@ -1122,7 +1216,7 @@ function animate() {
                     const crystal = crystals[c];
                     if (Math.hypot(spell.targetX - crystal.x, spell.targetY - crystal.y) < spell.radius + crystal.radius && !spell.hitEnemies.has(crystal)) {
                         spell.hitEnemies.add(crystal);
-                        crystal.hp -= (Math.floor(Math.random() * 4) + 3 + spellDamageBonus);
+                        crystal.hp -= (Math.floor(Math.random() * 4) + 3 + spell.damageBonus);
                         
                         if (crystal.hp <= 0) {
                             crystals.splice(c, 1);
@@ -1176,7 +1270,7 @@ function animate() {
                             spells.push({
                                 startX: spell.targetX, startY: spell.targetY, targetX: newTarget.x, targetY: newTarget.y, distance: dist,
                                 progress: 0, arcHeight: Math.min(dist * 0.4, 150), radius: 0, maxRadius: spell.maxRadius * 0.8, state: 'flying', 
-                                hitEnemies: new Set(), bounces: spell.bounces - 1, bounceHistory: new Set(spell.bounceHistory) 
+                                hitEnemies: new Set(), bounces: spell.bounces - 1, bounceHistory: new Set(spell.bounceHistory), damageBonus: spell.damageBonus 
                             });
                         }
                     }
@@ -1208,11 +1302,25 @@ function animate() {
                 } 
                 else if (killCount % goldDropThreshold === 0) { savedData.gold += 1; runGold += 1; saveGame(); updateGoldUI(); }
 
+                let inCrucible = false;
                 let finalXp = e.xpDrop;
-                structures.forEach(s => { if (s.type === 'soul' && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius) finalXp *= soulMultiplier; });
+
+                structures.forEach(s => { 
+                    if (s.type === 'soul' && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius) finalXp *= soulMultiplier; 
+                    if (s.type === 'crucible' && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius) inCrucible = true;
+                });
 
                 if (Math.random() < overloadChance) {
                     finalXp *= 2;
+                }
+                
+                if (inCrucible) {
+                    let goldChance = 0.01 + (transmutationLevel * 0.005);
+                    if (Math.random() < goldChance) {
+                        savedData.gold++; runGold++;
+                        if (philosophersStoneActive && health < maxHealth) { health++; updateHealthUI(); }
+                        saveGame(); updateGoldUI();
+                    }
                 }
 
                 addXp(finalXp); 
@@ -1221,8 +1329,23 @@ function animate() {
 
             let speedModifier = 1;
             let hitTarget = null; 
-            let targetAngle = Math.atan2(player.y - e.y, player.x - e.x);
             e.inTar = false;
+            
+            let closestDecoyDist = Infinity;
+            let activeDecoy = null;
+            structures.forEach(s => {
+                if (s.type === 'decoy') {
+                    let dist = Math.hypot(e.x - s.x, e.y - s.y);
+                    if (dist <= s.radius && dist < closestDecoyDist) {
+                        closestDecoyDist = dist; activeDecoy = s;
+                    }
+                }
+            });
+
+            let targetAngle = Math.atan2(player.y - e.y, player.x - e.x);
+            if (activeDecoy && !e.charmed) {
+                targetAngle = Math.atan2(activeDecoy.y - e.y, activeDecoy.x - e.x);
+            }
 
             if (e.charmed) {
                 speedModifier = 1.2;
@@ -1238,20 +1361,23 @@ function animate() {
                 if (closestEnemy) {
                     targetAngle = Math.atan2(closestEnemy.y - e.y, closestEnemy.x - e.x);
                     if (closestDist < e.radius + closestEnemy.radius + 2) {
-                        closestEnemy.hp -= 2; 
-                        e.hp -= 1; 
+                        closestEnemy.hp -= 2; e.hp -= 1; 
                         if (closestEnemy.hp <= 0) closestEnemy.dead = true;
                         if (e.hp <= 0) e.dead = true;
                     }
                 } else { targetAngle = Math.atan2(e.y - player.y, e.x - player.x); }
             } else {
                 structures.forEach(struct => {
-                    if (struct.type === 'tar') {
+                    if (struct.type === 'tar' || struct.type === 'frost') {
                         if (getCollisionData(e, struct).collided) {
-                            speedModifier = tarSpeedMod;
-                            e.inTar = true;
+                            if (struct.type === 'tar') { speedModifier *= tarSpeedMod; e.inTar = true; }
+                            if (struct.type === 'frost') {
+                                e.chill += deltaTime;
+                                if (e.chill > 2000) { e.frozen = 2000 + (deepFreezeLevel * 500); e.chill = 0; }
+                                if (e.frozen <= 0) speedModifier *= 0.7; // light slow while chilling
+                            }
                         }
-                    } else if (struct.type !== 'plague' && struct.type !== 'tesla' && struct.type !== 'charm') {
+                    } else if (struct.type !== 'plague' && struct.type !== 'tesla' && struct.type !== 'charm' && struct.type !== 'wind' && struct.type !== 'fire_pool') {
                         const col = getCollisionData(e, struct);
                         if (col.collided) {
                             if (struct.type === 'wire') {
@@ -1263,8 +1389,7 @@ function animate() {
                                 }
                             } else if (struct.type === 'barricade') {
                                 if (Math.random() < (kineticRepulsionLevel * 0.10)) {
-                                    e.x += col.normalX * 40;
-                                    e.y += col.normalY * 40;
+                                    e.x += col.normalX * 40; e.y += col.normalY * 40;
                                 } else {
                                     hitTarget = struct; e.x += col.normalX * col.overlap; e.y += col.normalY * col.overlap;
                                 }
@@ -1292,6 +1417,15 @@ function animate() {
                 }
             }
 
+            if (e.frozen > 0) {
+                e.frozen -= deltaTime;
+                speedModifier = 0;
+            }
+            if (e.splinterSlow > 0) {
+                e.splinterSlow -= deltaTime;
+                speedModifier *= 0.7; 
+            }
+
             e.x += Math.cos(targetAngle) * e.baseSpeed * speedModifier;
             e.y += Math.sin(targetAngle) * e.baseSpeed * speedModifier;
         }
@@ -1300,18 +1434,15 @@ function animate() {
     // --- DRAW THE TOWER ---
     const tw = 60, th = 80;
     
-    // Draw the shadow beneath the tower
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
     ctx.beginPath(); 
     ctx.ellipse(player.x, player.y + th/2, tw/2 + 10, 15, 0, 0, Math.PI * 2); 
     ctx.fill();
 
-    // Draw the new pixel art tower
     if (ASSETS.playerTower.complete && ASSETS.playerTower.naturalHeight !== 0) {
         ctx.drawImage(ASSETS.playerTower, player.x - tw/2, player.y - th/2, tw, th);
     }
 
-    // Health Bar
     const hpW = 60, hpH = 8, hpX = player.x - hpW/2, hpY = player.y - th/2 - 30;
     ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'; ctx.fillRect(hpX, hpY, hpW, hpH);
     ctx.fillStyle = '#e94560'; ctx.fillRect(hpX, hpY, hpW * (health / maxHealth), hpH);
@@ -1334,7 +1465,7 @@ function animate() {
             ctx.lineTo(midX, midY); ctx.lineTo(effect.x2, effect.y2); ctx.stroke();
         } else if (effect.type === 'explosion') {
             const life = Math.max(0, (effect.expires - currentFrameTime) / 200);
-            ctx.fillStyle = `rgba(255, 69, 0, ${life * 0.5})`;
+            ctx.fillStyle = effect.color || `rgba(255, 69, 0, ${life * 0.5})`;
             ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius, 0, Math.PI * 2); ctx.fill();
         } else if (effect.type === 'charm_beam') {
             ctx.strokeStyle = '#29b6f6'; ctx.lineWidth = 3; 
@@ -1347,61 +1478,44 @@ function animate() {
         ctx.save(); 
         ctx.translate(e.x, e.y); 
         
-        // --- 1. Draw the Sprite (Needs Rotation) ---
         ctx.save();
         
-        // Rotate the enemy to face their target (fixed for upwards-facing sprites)
-        if (e.charmed) { 
-            ctx.rotate(Math.atan2(e.y - player.y, e.x - player.x) + Math.PI / 2); 
-        } else { 
-            ctx.rotate(Math.atan2(player.y - e.y, player.x - e.x) + Math.PI / 2); 
-        }
+        if (e.charmed) { ctx.rotate(Math.atan2(e.y - player.y, e.x - player.x) + Math.PI / 2); } 
+        else { ctx.rotate(Math.atan2(player.y - e.y, player.x - e.x) + Math.PI / 2); }
         
-        // Figure out the base image
         let imgToDraw = e.isBoss ? ASSETS.boss : ASSETS.zombie;
         
-        if (e.charmed) {
-            imgToDraw = ASSETS.zombieCharmed; 
-        } else if (e.poisoned) {
-            imgToDraw = e.isBoss ? ASSETS.bossPoisoned : ASSETS.zombiePoisoned;
-        }
+        if (e.charmed) { imgToDraw = ASSETS.zombieCharmed; } 
+        else if (e.poisoned) { imgToDraw = e.isBoss ? ASSETS.bossPoisoned : ASSETS.zombiePoisoned; }
 
-        // Multiply by 3 to scale up the sprites and compensate for transparent edges
         const size = e.radius * 3; 
         const offset = -size / 2;
 
-        // Draw the base zombie
-        if (imgToDraw.complete && imgToDraw.naturalHeight !== 0) {
-            ctx.drawImage(imgToDraw, offset, offset, size, size);
+        if (e.frozen > 0) {
+            ctx.fillStyle = 'rgba(129, 212, 250, 0.4)';
+            ctx.fillRect(offset, offset, size, size);
         }
 
-        // If poisoned, draw the animated bubbles on top
+        if (imgToDraw.complete && imgToDraw.naturalHeight !== 0) { ctx.drawImage(imgToDraw, offset, offset, size, size); }
+
         if (e.poisoned && !e.charmed && ASSETS.poisonBubbles.width > 0) {
             const frameCount = 5; 
             const animationSpeed = 250; 
-            
             const currentFrame = Math.floor(Date.now() / animationSpeed) % frameCount;
             const frameWidth = ASSETS.poisonBubbles.width / frameCount;
             const sourceX = currentFrame * frameWidth;
 
-            ctx.drawImage(
-                ASSETS.poisonBubbles, 
-                sourceX, 0, frameWidth, ASSETS.poisonBubbles.height, 
-                offset, offset, size, size                      
-            );
+            ctx.drawImage(ASSETS.poisonBubbles, sourceX, 0, frameWidth, ASSETS.poisonBubbles.height, offset, offset, size, size);
         }
-        
-        ctx.restore(); // Restore from rotation so the health bar doesn't spin
+        ctx.restore(); 
 
-        // --- 2. Draw Health Bars (Drawn AFTER the image, so it stays on top) ---
         const bW = e.isBoss ? 40 : 20;
-        // Dynamically calculate the Y offset so it hovers above the new chunky sprites
         const bO = (e.radius * -1.5) - 10; 
         
         ctx.fillStyle = 'rgba(255, 0, 0, 0.8)'; ctx.fillRect(-bW/2, bO, bW, 4); 
         ctx.fillStyle = '#76ff03'; ctx.fillRect(-bW/2, bO, bW * (e.hp / e.maxHp), 4); 
 
-        ctx.restore(); // Restore from translation
+        ctx.restore(); 
     });
 
     crystals.forEach(c => {
@@ -1423,12 +1537,16 @@ function animate() {
         else if (currentBlueprint === 'plague') { radius = plagueRadius; } 
         else if (currentBlueprint === 'soul') { radius = 150; }
         else if (currentBlueprint === 'charm') { radius = 150; }
+        else if (currentBlueprint === 'wind') { w = 30; h = 30; radius = 100; }
+        else if (currentBlueprint === 'decoy') { w = 30; h = 60; radius = 150 + (loudCarvingsLevel * 15); }
+        else if (currentBlueprint === 'frost') { w = 120; h = 120; }
+        else if (currentBlueprint === 'focus') { w = 40; h = 40; radius = 100 * (1 + (resonantGemLevel * 0.1)); }
+        else if (currentBlueprint === 'crucible') { w = 50; h = 50; radius = 120; }
+        else if (currentBlueprint === 'meteor') { w = 60; h = 60; radius = 300 * (1 + (astralPayloadLevel * 0.15)); }
 
         let isPerm = isPlacingPerms;
         if (isPerm) {
-            w = w * 0.75;
-            h = h * 0.75;
-            radius = Math.max(radius * 0.75, 50);
+            w = w * 0.75; h = h * 0.75; radius = Math.max(radius * 0.75, 50);
         }
 
         ctx.save(); ctx.translate(mouseX, mouseY); ctx.rotate(blueprintAngle);
@@ -1439,17 +1557,10 @@ function animate() {
             if (currentBlueprint === 'barricade') { ctx.fillStyle = 'rgba(139, 69, 19, 0.5)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); } 
             else if (currentBlueprint === 'tar') { 
                 ctx.globalAlpha = 0.5;
-                if (ASSETS.tarPit.complete && ASSETS.tarPit.naturalHeight !== 0) {
-                    ctx.drawImage(ASSETS.tarPit, -w/2, -h/2, w, h);
-                } else {
-                    ctx.fillStyle = 'rgba(30, 30, 30, 0.5)'; 
-                    ctx.fillRect(-w/2, -h/2, w, h); 
-                }
+                if (ASSETS.tarPit.complete && ASSETS.tarPit.naturalHeight !== 0) { ctx.drawImage(ASSETS.tarPit, -w/2, -h/2, w, h); } 
+                else { ctx.fillStyle = 'rgba(30, 30, 30, 0.5)'; ctx.fillRect(-w/2, -h/2, w, h); }
                 ctx.globalAlpha = 1.0;
-                
-                ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; 
-                ctx.lineWidth = 2; 
-                ctx.strokeRect(-w/2, -h/2, w, h); 
+                ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.lineWidth = 2; ctx.strokeRect(-w/2, -h/2, w, h); 
             } 
             else if (currentBlueprint === 'wire') { ctx.fillStyle = 'rgba(150, 150, 150, 0.3)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.setLineDash([5, 5]); ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); }
             else if (currentBlueprint === 'tesla') { ctx.fillStyle = 'rgba(0, 229, 255, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.stroke(); } ctx.fillStyle='rgba(0, 229, 255, 0.1)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
@@ -1457,19 +1568,10 @@ function animate() {
             else if (currentBlueprint === 'soul') { ctx.fillStyle = 'rgba(170, 0, 255, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.closePath(); ctx.stroke(); } ctx.fillStyle='rgba(170, 0, 255, 0.1)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
             else if (currentBlueprint === 'mending') { 
                 ctx.globalAlpha = 0.5;
-                if (ASSETS.mendingWard.complete && ASSETS.mendingWard.naturalHeight !== 0) {
-                    ctx.drawImage(ASSETS.mendingWard, -15, -45, 30, 60);
-                } else {
-                    ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; 
-                    ctx.fillRect(-15, -15, 30, 30); 
-                }
+                if (ASSETS.mendingWard.complete && ASSETS.mendingWard.naturalHeight !== 0) { ctx.drawImage(ASSETS.mendingWard, -15, -45, 30, 60); } 
+                else { ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; ctx.fillRect(-15, -15, 30, 30); }
                 ctx.globalAlpha = 1.0;
-                
-                if(isPerm) { 
-                    ctx.strokeStyle='#e040fb'; 
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(-15, -15, 30, 30); 
-                } 
+                if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.lineWidth = 2; ctx.strokeRect(-15, -15, 30, 30); } 
             }
             else if (currentBlueprint === 'charm') { 
                 ctx.fillStyle = 'rgba(41, 182, 246, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.fill(); 
@@ -1477,16 +1579,29 @@ function animate() {
                 if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.closePath(); ctx.stroke(); }
                 ctx.fillStyle = 'rgba(41, 182, 246, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill();
             }
+            else if (currentBlueprint === 'wind') { ctx.fillStyle = 'rgba(176, 190, 197, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.lineWidth=2; ctx.stroke(); } ctx.fillStyle='rgba(176, 190, 197, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill(); }
+            else if (currentBlueprint === 'decoy') { ctx.fillStyle = 'rgba(93, 64, 55, 0.5)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.lineWidth = 2; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); ctx.strokeStyle = 'rgba(93, 64, 55, 0.2)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.stroke(); }
+            else if (currentBlueprint === 'frost') { ctx.fillStyle = 'rgba(129, 212, 250, 0.5)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.lineWidth = 2; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); }
+            else if (currentBlueprint === 'focus') { ctx.fillStyle = 'rgba(206, 147, 216, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -h/2); ctx.lineTo(w/2, 0); ctx.lineTo(0, h/2); ctx.lineTo(-w/2, 0); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(0, -h/2); ctx.lineTo(w/2, 0); ctx.lineTo(0, h/2); ctx.lineTo(-w/2, 0); ctx.closePath(); ctx.stroke(); } ctx.fillStyle='rgba(206, 147, 216, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill(); }
+            else if (currentBlueprint === 'crucible') { ctx.fillStyle = 'rgba(66, 66, 66, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'rgba(255, 202, 40, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/4, 0, Math.PI*2); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.stroke(); } ctx.fillStyle='rgba(255, 202, 40, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill(); }
+            else if (currentBlueprint === 'meteor') { ctx.fillStyle = 'rgba(255, 112, 67, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.lineWidth=2; ctx.stroke(); } ctx.fillStyle='rgba(255, 112, 67, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill(); }
         }
         ctx.restore();
     } else if (!isPaused && isGameStarted && !isPlacingPerms) {
         const cannotShoot = Math.hypot(player.x - mouseX, player.y - mouseY) <= restrictedRadius || currentAmmo <= 0; 
-        ctx.beginPath(); ctx.arc(mouseX, mouseY, maxBlastRadius, 0, Math.PI * 2);
+        
+        let localBlastRadius = maxBlastRadius;
+        structures.forEach(s => {
+            if (s.type === 'focus' && Math.hypot(mouseX - s.x, mouseY - s.y) <= s.radius) {
+                localBlastRadius *= 1.5; 
+            }
+        });
+
+        ctx.beginPath(); ctx.arc(mouseX, mouseY, localBlastRadius, 0, Math.PI * 2);
         ctx.fillStyle = cannotShoot ? 'rgba(100, 100, 100, 0.2)' : 'rgba(255, 0, 0, 0.1)'; ctx.fill(); ctx.strokeStyle = cannotShoot ? 'rgba(100, 100, 100, 0.7)' : 'rgba(255, 0, 0, 0.7)'; ctx.lineWidth = 2; ctx.stroke();
         const xs = 10; ctx.beginPath(); ctx.moveTo(mouseX - xs, mouseY - xs); ctx.lineTo(mouseX + xs, mouseY + xs); ctx.moveTo(mouseX + xs, mouseY - xs); ctx.lineTo(mouseX - xs, mouseY + xs); ctx.stroke();
     }
 
-    // End scaled rendering
     ctx.restore(); 
 }
 
