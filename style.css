@@ -147,3 +147,16 @@ canvas { display: block; cursor: none; }
     50% { box-shadow: 0 0 20px #00e5ff, 4px 4px 0px black; }
     100% { box-shadow: 0 0 5px #00e5ff, 4px 4px 0px black; }
 }
+
+#weatherDisplay {
+    position: absolute; 
+    top: 50px; 
+    right: 20px; 
+    font-size: 14px; 
+    color: #4fc3f7; 
+    margin: 0; 
+    text-shadow: 2px 2px 0px black;
+    z-index: 5; 
+    pointer-events: none;
+    transition: color 0.5s ease;
+}

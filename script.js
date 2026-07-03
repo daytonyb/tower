@@ -306,6 +306,12 @@ const crystals = [];
 
 let currentBlueprint = null, blueprintAngle = 0;
 const structures = [], spells = [], enemies = [], visualEffects = []; 
+const enemyProjectiles = [];
+let currentWeather = 'Sunny';
+let weatherState = 'none'; // 'none', 'fading_in', 'active'
+let weatherTimer = 0;
+let weatherAlpha = 0; // For visual fade-ins
+let lastLightningStrike = 0;
 let lastRechargeTime = 0;
 const restrictedRadius = 120; 
 
@@ -766,22 +772,61 @@ function spawnBossEnemy() {
 
 function spawnWave() {
     if (isPaused || !isGameStarted) return;
-    const minSpawn = Math.max(1000, 3000 - lureSpawnReduction); const maxSpawn = Math.max(2000, 7000 - lureSpawnReduction);
-    const delayMult = Math.max(0.2, 1 - bloodReckoningReduction); const nextSpawnDelay = (Math.random() * (maxSpawn - minSpawn) + minSpawn) * delayMult;
+    const minSpawn = Math.max(1000, 3000 - lureSpawnReduction); 
+    const maxSpawn = Math.max(2000, 7000 - lureSpawnReduction);
+    const delayMult = Math.max(0.2, 1 - bloodReckoningReduction); 
+    const nextSpawnDelay = (Math.random() * (maxSpawn - minSpawn) + minSpawn) * delayMult;
     
-    if (level % bossLevelThreshold === 0 && lastBossLevel !== level) { lastBossLevel = level; spawnBossEnemy(); } 
-    else {
-        const groupSize = Math.floor(Math.random() * (5 + Math.floor(level / 2))) + 3; 
-        const hpMultiplier = 1 + (level * 0.20); const speedMultiplier = 1 + (level * 0.08);
+    if (level % bossLevelThreshold === 0 && lastBossLevel !== level) { 
+        lastBossLevel = level; 
+        spawnBossEnemy(); 
+    } else {
+        // Randomize wave composition
+        const waveTypeRoll = Math.random();
+        let groupSize = Math.floor(Math.random() * (5 + Math.floor(level / 2))) + 3; 
+        const hpMult = 1 + (level * 0.20); 
+        const spdMult = 1 + (level * 0.08);
+        const brMult = 1 + bloodReckoningReduction * 1.5;
+
         let groupX, groupY;
-        if (Math.random() < 0.5) { groupX = Math.random() < 0.5 ? -65 : logicalWidth + 65; groupY = Math.random() * logicalHeight; } 
-        else { groupX = Math.random() * logicalWidth; groupY = Math.random() < 0.5 ? -65 : logicalHeight + 65; }
-        const brMultiplier = 1 + bloodReckoningReduction * 1.5;
+        if (Math.random() < 0.5) { 
+            groupX = Math.random() < 0.5 ? -65 : logicalWidth + 65; 
+            groupY = Math.random() * logicalHeight; 
+        } else { 
+            groupX = Math.random() * logicalWidth; 
+            groupY = Math.random() < 0.5 ? -65 : logicalHeight + 65; 
+        }
 
         for (let i = 0; i < groupSize; i++) {
-            const x = groupX + (Math.random() - 0.5) * 80; const y = groupY + (Math.random() - 0.5) * 80;
-            const speed = (0.4 + Math.random() * 0.3) * speedMultiplier; const hp = Math.floor((Math.random() * 11 + 5) * hpMultiplier);
-            enemies.push({ x, y, radius: 15, baseSpeed: speed, hp: hp, maxHp: hp, xpDrop: Math.floor((hp + speed * 10) * brMultiplier), dead: false, isBoss: false, poisoned: false, charmed: false, inTar: false, tarTime: 0, rending: false, lastTeslaHit: 0, chill: 0, frozen: 0, splinterSlow: 0, stickySlow: 0, updraftSlow: 0, stunned: 0, tetanus: false, rooted: 0 });
+            const x = groupX + (Math.random() - 0.5) * 80; 
+            const y = groupY + (Math.random() - 0.5) * 80;
+            
+            let eType = 'zombie';
+            let speed = (0.4 + Math.random() * 0.3) * spdMult; 
+            let hp = Math.floor((Math.random() * 11 + 5) * hpMult);
+            let radius = 15;
+            let range = 0;
+
+            // Determine enemy type based on random roll
+            if (waveTypeRoll < 0.2 && level > 2) { 
+                // SWARMERS: Fast, weak, small, high count
+                eType = 'swarmer'; speed *= 1.8; hp = Math.max(1, Math.floor(hp * 0.3)); radius = 10;
+                if (i === 0) groupSize = Math.floor(groupSize * 1.5); 
+            } else if (waveTypeRoll < 0.4 && level > 3) {
+                // BRUTES: Slow, tanky, large
+                eType = 'brute'; speed *= 0.6; hp *= 3; radius = 25;
+                if (i === 0) groupSize = Math.max(1, Math.floor(groupSize / 2));
+            } else if (waveTypeRoll < 0.6 && level > 4) {
+                // RANGED: Skeletons that shoot
+                eType = 'ranged'; speed *= 0.8; hp *= 0.8; range = 250;
+            }
+
+            enemies.push({ 
+                type: eType, x, y, radius, baseSpeed: speed, hp: hp, maxHp: hp, attackRange: range, lastShot: 0,
+                xpDrop: Math.floor((hp + speed * 10) * brMult), dead: false, isBoss: false, poisoned: false, 
+                charmed: false, inTar: false, tarTime: 0, rending: false, lastTeslaHit: 0, chill: 0, frozen: 0, 
+                splinterSlow: 0, stickySlow: 0, updraftSlow: 0, stunned: 0, tetanus: false, rooted: 0 
+            });
         }
     }
     spawnTimer = setTimeout(spawnWave, nextSpawnDelay);
@@ -804,6 +849,171 @@ function distToSegmentSquared(p, v, w) {
     const l2 = (v.x - w.x)*(v.x - w.x) + (v.y - w.y)*(v.y - w.y); if (l2 === 0) return (p.x - v.x)*(p.x - v.x) + (p.y - v.y)*(p.y - v.y);
     let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2; t = Math.max(0, Math.min(1, t));
     return (p.x - (v.x + t * (w.x - v.x)))**2 + (p.y - (v.y + t * (w.y - v.y)))**2;
+}
+
+function getEnemySprite(enemy) {
+    if (enemy.charmed) return ASSETS.zombieCharmed;
+    if (enemy.poisoned) return enemy.isBoss ? ASSETS.bossPoisoned : ASSETS.zombiePoisoned;
+    return enemy.isBoss ? ASSETS.boss : ASSETS.zombie;
+}
+
+function getEnemyDrawBox(enemy, size) {
+    if (enemy.type === 'swarmer') return { x: -size * 0.34, y: -size * 0.32, w: size * 0.68, h: size * 0.82 };
+    if (enemy.type === 'brute') return { x: -size * 0.62, y: -size * 0.58, w: size * 1.24, h: size * 1.26 };
+    if (enemy.type === 'ranged') return { x: -size * 0.48, y: -size * 0.50, w: size * 0.96, h: size * 1.04 };
+    return { x: -size / 2, y: -size / 2, w: size, h: size };
+}
+
+function drawFallbackEnemy(box, enemy) {
+    let bodyColor = '#4caf50';
+    let detailColor = '#dcedc8';
+
+    if (enemy.type === 'swarmer') {
+        bodyColor = '#8bc34a';
+        detailColor = '#fff176';
+    } else if (enemy.type === 'brute') {
+        bodyColor = '#6d4c41';
+        detailColor = '#bcaaa4';
+    } else if (enemy.type === 'ranged') {
+        bodyColor = '#90a4ae';
+        detailColor = '#cfd8dc';
+    } else if (enemy.isBoss) {
+        bodyColor = '#8d6e63';
+        detailColor = '#ffccbc';
+    }
+
+    if (enemy.poisoned && !enemy.charmed) {
+        bodyColor = '#2e7d32';
+        detailColor = '#a5d6a7';
+    } else if (enemy.charmed) {
+        bodyColor = '#29b6f6';
+        detailColor = '#e1f5fe';
+    }
+
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.arc(0, box.y + box.h * 0.18, box.w * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(box.x + box.w * 0.26, box.y + box.h * 0.20, box.w * 0.48, box.h * 0.42);
+    ctx.fillRect(box.x + box.w * 0.10, box.y + box.h * 0.28, box.w * 0.16, box.h * 0.34);
+    ctx.fillRect(box.x + box.w * 0.74, box.y + box.h * 0.28, box.w * 0.16, box.h * 0.34);
+    ctx.fillRect(box.x + box.w * 0.28, box.y + box.h * 0.60, box.w * 0.16, box.h * 0.36);
+    ctx.fillRect(box.x + box.w * 0.56, box.y + box.h * 0.60, box.w * 0.16, box.h * 0.36);
+
+    ctx.fillStyle = detailColor;
+    ctx.fillRect(-box.w * 0.11, box.y + box.h * 0.10, box.w * 0.08, box.h * 0.05);
+    ctx.fillRect(box.w * 0.03, box.y + box.h * 0.10, box.w * 0.08, box.h * 0.05);
+}
+
+function drawEnemyVariantBackdrop(enemy, size) {
+    if (enemy.type === 'brute') {
+        ctx.fillStyle = 'rgba(84, 110, 122, 0.55)';
+        ctx.fillRect(-size * 0.54, -size * 0.16, size * 0.16, size * 0.54);
+        ctx.fillRect(size * 0.38, -size * 0.16, size * 0.16, size * 0.54);
+        ctx.fillRect(-size * 0.40, -size * 0.46, size * 0.80, size * 0.15);
+    } else if (enemy.type === 'ranged') {
+        ctx.fillStyle = 'rgba(121, 85, 72, 0.7)';
+        ctx.fillRect(-size * 0.28, -size * 0.24, size * 0.08, size * 0.48);
+        ctx.fillStyle = 'rgba(255, 245, 157, 0.7)';
+        ctx.fillRect(-size * 0.24, -size * 0.18, size * 0.02, size * 0.36);
+    }
+}
+
+function drawEnemyVariantOverlay(enemy, size) {
+    if (enemy.type === 'swarmer') {
+        ctx.fillStyle = '#ffee58';
+        ctx.fillRect(-size * 0.12, -size * 0.08, size * 0.07, size * 0.05);
+        ctx.fillRect(size * 0.05, -size * 0.08, size * 0.07, size * 0.05);
+        ctx.strokeStyle = '#fdd835';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.18, size * 0.18);
+        ctx.lineTo(-size * 0.30, size * 0.34);
+        ctx.moveTo(size * 0.18, size * 0.18);
+        ctx.lineTo(size * 0.30, size * 0.34);
+        ctx.stroke();
+    } else if (enemy.type === 'brute') {
+        ctx.fillStyle = 'rgba(120, 144, 156, 0.8)';
+        ctx.fillRect(-size * 0.34, -size * 0.42, size * 0.68, size * 0.12);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.16, -size * 0.16);
+        ctx.lineTo(size * 0.10, size * 0.08);
+        ctx.moveTo(size * 0.02, -size * 0.20);
+        ctx.lineTo(size * 0.22, -size * 0.04);
+        ctx.stroke();
+    } else if (enemy.type === 'ranged') {
+        ctx.strokeStyle = '#8d6e63';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(size * 0.28, 0, size * 0.18, -Math.PI / 2, Math.PI / 2);
+        ctx.stroke();
+        ctx.strokeStyle = '#d7ccc8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(size * 0.28, -size * 0.18);
+        ctx.lineTo(size * 0.28, size * 0.18);
+        ctx.stroke();
+        ctx.fillStyle = '#cfd8dc';
+        ctx.beginPath();
+        ctx.moveTo(size * 0.04, -size * 0.02);
+        ctx.lineTo(size * 0.20, -size * 0.10);
+        ctx.lineTo(size * 0.16, 0);
+        ctx.closePath();
+        ctx.fill();
+    }
+}
+
+function drawEnemyPoisonBubbles(box) {
+    if (ASSETS.poisonBubbles.width <= 0) return;
+
+    const frameCount = 5;
+    const animationSpeed = 250;
+    const currentFrame = Math.floor(Date.now() / animationSpeed) % frameCount;
+    const frameWidth = ASSETS.poisonBubbles.width / frameCount;
+    const sourceX = currentFrame * frameWidth;
+
+    ctx.drawImage(ASSETS.poisonBubbles, sourceX, 0, frameWidth, ASSETS.poisonBubbles.height, box.x, box.y, box.w, box.h);
+}
+
+function drawEnemy(enemy) {
+    const size = enemy.radius * 3;
+    const box = getEnemyDrawBox(enemy, size);
+    const sprite = getEnemySprite(enemy);
+    const hasSprite = sprite.complete && sprite.naturalHeight !== 0;
+    const statusPad = enemy.type === 'brute' ? size * 0.12 : size * 0.06;
+    const healthRatio = Math.max(0, enemy.hp / enemy.maxHp);
+
+    ctx.save();
+    ctx.translate(enemy.x, enemy.y);
+    ctx.save();
+    if (enemy.charmed) ctx.rotate(Math.atan2(enemy.y - player.y, enemy.x - player.x) + Math.PI / 2);
+    else ctx.rotate(Math.atan2(player.y - enemy.y, player.x - enemy.x) + Math.PI / 2);
+
+    if (enemy.frozen > 0 || enemy.stunned > 0) {
+        ctx.fillStyle = enemy.frozen > 0 ? 'rgba(129, 212, 250, 0.4)' : 'rgba(255, 215, 0, 0.4)';
+        ctx.fillRect(box.x - statusPad, box.y - statusPad, box.w + statusPad * 2, box.h + statusPad * 2);
+    }
+
+    drawEnemyVariantBackdrop(enemy, size);
+
+    if (hasSprite) ctx.drawImage(sprite, box.x, box.y, box.w, box.h);
+    else drawFallbackEnemy(box, enemy);
+
+    drawEnemyVariantOverlay(enemy, size);
+
+    if (enemy.poisoned && !enemy.charmed) drawEnemyPoisonBubbles(box);
+
+    ctx.restore();
+
+    const bW = enemy.isBoss ? 40 : 20;
+    const bO = (enemy.radius * -1.5) - 10;
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+    ctx.fillRect(-bW / 2, bO, bW, 4);
+    ctx.fillStyle = '#76ff03';
+    ctx.fillRect(-bW / 2, bO, bW * healthRatio, 4);
+    ctx.restore();
 }
 
 function animate() {
@@ -829,6 +1039,7 @@ function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.save(); ctx.scale(gameScale, gameScale);
     ctx.beginPath(); ctx.arc(player.x, player.y, restrictedRadius, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255, 0, 0, 0.05)'; ctx.fill(); ctx.strokeStyle = 'rgba(255, 0, 0, 0.4)'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]); 
 
+    // --- STRUCTURE LOGIC ---
     for (let i = structures.length - 1; i >= 0; i--) {
         const struct = structures[i];
         if (struct.expires && currentFrameTime > struct.expires) { structures.splice(i, 1); continue; }
@@ -944,6 +1155,7 @@ function animate() {
         }
     }
 
+    // --- SPELLS LOGIC ---
     if (!isPaused && isGameStarted) {
         spells.forEach((spell, index) => {
             if (spell.state === 'flying') {
@@ -1014,6 +1226,7 @@ function animate() {
             }
         });
 
+        // --- ENEMY LOGIC ---
         for (let i = enemies.length - 1; i >= 0; i--) {
             const e = enemies[i];
 
@@ -1024,6 +1237,7 @@ function animate() {
                 killCount++;
                 if (e.isBoss) { 
                     savedData.gold += 2 + bossGoldBonus + bountyHunterBonus; runGold += 2 + bossGoldBonus + bountyHunterBonus; saveGame(); updateGoldUI(); bossesKilled++; 
+                    triggerRandomWeather(); // WEATHER TRIGGERED HERE
                     if (bossesKilled === 10 && !crystalsSpawned) { crystalsSpawned = true; spawnCrystals(1); } else if (bossesKilled === 15 && !crystalsSpawned && savedData.prestigeUpgrades.trueEnding > 0) { crystalsSpawned = true; spawnCrystals(2); }
                 } 
                 else if (killCount % goldDropThreshold === 0) { savedData.gold += 1; runGold += 1; saveGame(); updateGoldUI(); }
@@ -1100,7 +1314,7 @@ function animate() {
                             if (struct.type === 'tar') { speedModifier *= tarSpeedMod; e.inTar = true; e.stickySlow = 2000; }
                             if (struct.type === 'frost') { e.chill += deltaTime; if (e.chill > 2000 / flashFreezeSpeed) { e.frozen = 2000 + (deepFreezeLevel * 500); e.chill = 0; } if (e.frozen <= 0) speedModifier *= (0.7 - bitingColdSlow); }
                         }
-                    } else if (struct.type !== 'plague' && struct.type !== 'tesla' && struct.type !== 'charm' && struct.type !== 'wind' && struct.type !== 'fire_pool' && struct.type !== 'soul' && struct.type !== 'mending' && struct.type !== 'crucible' && struct.type !== 'focus' && struct.type !== 'meteor') {
+                    } else if (struct.type !== 'plague' && struct.type !== 'tesla' && struct.type !== 'charm' && struct.type !== 'wind' && struct.type !== 'fire_pool' && struct.type !== 'soul' && struct.type !== 'mending' && struct.type !== 'crucible' && struct.type !== 'focus') {
                         const col = getCollisionData(e, struct);
                         if (col.collided) {
                             if (struct.type === 'wire') {
@@ -1143,6 +1357,13 @@ function animate() {
                 }
             }
 
+            // Heatwave overrides Tar slow
+            if (currentWeather === 'Heatwave' && e.inTar) {
+                speedModifier /= tarSpeedMod;
+                e.hp -= 1; // Burn them instead
+                if (e.hp <= 0) e.dead = true;
+            }
+
             // Apply Fossilized Pitch logic
             if (e.inTar) {
                 e.tarTime += deltaTime;
@@ -1160,9 +1381,53 @@ function animate() {
             if (e.updraftSlow > 0) { e.updraftSlow -= deltaTime; speedModifier *= (1 - updraftSlow); }
             if (!e.inTar && e.stickySlow > 0) { e.stickySlow -= deltaTime; speedModifier *= (1 - stickyResidueSlow); }
 
-            e.x += Math.cos(targetAngle) * e.baseSpeed * speedModifier; e.y += Math.sin(targetAngle) * e.baseSpeed * speedModifier;
+            // NEW MOVEMENT LOGIC
+            const distToTower = Math.hypot(player.x - e.x, player.y - e.y);
+            if (e.type === 'ranged' && !e.charmed && distToTower <= e.attackRange) {
+                // Stop moving, shoot an arrow
+                if (currentFrameTime - e.lastShot > 2000) {
+                    enemyProjectiles.push({ 
+                        x: e.x, y: e.y, targetX: player.x, targetY: player.y, speed: 4 
+                    });
+                    e.lastShot = currentFrameTime;
+                }
+            } else {
+                e.x += Math.cos(targetAngle) * e.baseSpeed * speedModifier; 
+                e.y += Math.sin(targetAngle) * e.baseSpeed * speedModifier;
+            }
+        }
+
+        // --- ENEMY PROJECTILES ---
+        for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
+            let p = enemyProjectiles[i];
+            let angle = Math.atan2(p.targetY - p.y, p.targetX - p.x);
+            p.x += Math.cos(angle) * p.speed;
+            p.y += Math.sin(angle) * p.speed;
+
+            // Collision with tower
+            if (Math.hypot(player.x - p.x, player.y - p.y) <= restrictedRadius) {
+                health -= 5; 
+                updateHealthUI();
+                enemyProjectiles.splice(i, 1);
+            }
         }
     }
+
+    if (isGameStarted) {
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            if (!enemies[i].dead) drawEnemy(enemies[i]);
+        }
+
+        enemyProjectiles.forEach(projectile => {
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(projectile.x, projectile.y, 4, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
+    // --- WEATHER DRAWING ---
+    updateAndDrawWeather(ctx, currentFrameTime);
 
     // --- DRAW THE TOWER ---
     const tw = 60, th = 80;
@@ -1185,29 +1450,7 @@ function animate() {
         else if (effect.type === 'charm_beam') { ctx.strokeStyle = '#29b6f6'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(effect.x1, effect.y1); ctx.lineTo(effect.x2, effect.y2); ctx.stroke(); }
     }
 
-    // --- DRAW THE ENEMIES ---
-    enemies.forEach(e => {
-        ctx.save(); ctx.translate(e.x, e.y); ctx.save();
-        if (e.charmed) ctx.rotate(Math.atan2(e.y - player.y, e.x - player.x) + Math.PI / 2); else ctx.rotate(Math.atan2(player.y - e.y, player.x - e.x) + Math.PI / 2);
-        
-        let imgToDraw = e.isBoss ? ASSETS.boss : ASSETS.zombie;
-        if (e.charmed) imgToDraw = ASSETS.zombieCharmed; else if (e.poisoned) imgToDraw = e.isBoss ? ASSETS.bossPoisoned : ASSETS.zombiePoisoned;
-
-        const size = e.radius * 3; const offset = -size / 2;
-        if (e.frozen > 0 || e.stunned > 0) { ctx.fillStyle = e.frozen > 0 ? 'rgba(129, 212, 250, 0.4)' : 'rgba(255, 215, 0, 0.4)'; ctx.fillRect(offset, offset, size, size); }
-        if (imgToDraw.complete && imgToDraw.naturalHeight !== 0) ctx.drawImage(imgToDraw, offset, offset, size, size);
-
-        if (e.poisoned && !e.charmed && ASSETS.poisonBubbles.width > 0) {
-            const frameCount = 5; const animationSpeed = 250; const currentFrame = Math.floor(Date.now() / animationSpeed) % frameCount; const frameWidth = ASSETS.poisonBubbles.width / frameCount; const sourceX = currentFrame * frameWidth;
-            ctx.drawImage(ASSETS.poisonBubbles, sourceX, 0, frameWidth, ASSETS.poisonBubbles.height, offset, offset, size, size);
-        }
-        ctx.restore(); 
-
-        const bW = e.isBoss ? 40 : 20; const bO = (e.radius * -1.5) - 10; 
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.8)'; ctx.fillRect(-bW/2, bO, bW, 4); ctx.fillStyle = '#76ff03'; ctx.fillRect(-bW/2, bO, bW * (e.hp / e.maxHp), 4); 
-        ctx.restore(); 
-    });
-
+    // --- DRAW THE CRYSTALS ---
     crystals.forEach(c => {
         ctx.save(); ctx.translate(c.x, c.y); 
         ctx.fillStyle = 'rgba(255, 0, 0, 0.8)'; ctx.fillRect(-25, -50, 50, 5); ctx.fillStyle = '#ffd700'; ctx.fillRect(-25, -50, 50 * (c.hp / c.maxHp), 5); ctx.fillStyle = 'rgba(170, 0, 255, 0.7)'; ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 3; ctx.shadowBlur = 15; ctx.shadowColor = '#aa00ff';
@@ -1215,6 +1458,7 @@ function animate() {
         ctx.restore(); 
     });
 
+    // --- DRAW RETICLE / BLUEPRINTS ---
     if (currentBlueprint) {
         let w = 40, h = 40, radius = 0;
         if (currentBlueprint === 'barricade') { w = 80; h = 20; } else if (currentBlueprint === 'tar') { w = 120; h = 120; } else if (currentBlueprint === 'wire') { w = 150; h = 40; } else if (currentBlueprint === 'tesla') { radius = 150; } else if (currentBlueprint === 'plague') { radius = plagueRadius; } else if (currentBlueprint === 'soul') { radius = 150 * wideNetRad; } else if (currentBlueprint === 'charm') { radius = 150 * charismaticReachRad; } else if (currentBlueprint === 'wind') { w = 30; h = 30; radius = 100; } else if (currentBlueprint === 'decoy') { w = 30; h = 60; radius = 150 + (loudCarvingsLevel * 15); } else if (currentBlueprint === 'frost') { w = 120; h = 120; } else if (currentBlueprint === 'focus') { w = 40; h = 40; radius = 100 * resonantGemLevel; } else if (currentBlueprint === 'crucible') { w = 50; h = 50; radius = 120 * gildedRadiusRad; } else if (currentBlueprint === 'meteor') { w = 60; h = 60; radius = 300 * (1 + (astralPayloadLevel * 0.15)); }
@@ -1249,6 +1493,104 @@ function animate() {
         const xs = 10; ctx.beginPath(); ctx.moveTo(mouseX - xs, mouseY - xs); ctx.lineTo(mouseX + xs, mouseY + xs); ctx.moveTo(mouseX + xs, mouseY - xs); ctx.lineTo(mouseX - xs, mouseY + xs); ctx.stroke();
     }
     ctx.restore(); 
+}
+
+function triggerRandomWeather() {
+    const storms = [
+        { name: 'Acid Rain', duration: 45000, color: '#76ff03' },
+        { name: 'Heatwave', duration: 30000, color: '#ff7043' },
+        { name: 'Thunderstorm', duration: 60000, color: '#9fa8da' }
+    ];
+    const storm = storms[Math.floor(Math.random() * storms.length)];
+    
+    currentWeather = storm.name;
+    weatherState = 'fading_in';
+    weatherTimer = Date.now() + 10000; // 10 seconds to fade in
+    weatherAlpha = 0;
+    
+    const display = document.getElementById('weatherDisplay');
+    display.innerText = "Storm Brewing...";
+    display.style.color = "#aaa";
+
+    // Schedule the actual storm to start
+    setTimeout(() => {
+        weatherState = 'active';
+        weatherTimer = Date.now() + storm.duration;
+        display.innerText = storm.name;
+        display.style.color = storm.color;
+    }, 10000);
+}
+
+function updateAndDrawWeather(ctx, currentFrameTime) {
+    if (weatherState === 'none') return;
+    const weatherWidth = logicalWidth;
+    const weatherHeight = logicalHeight;
+
+    // Fade logic
+    if (weatherState === 'fading_in') {
+        weatherAlpha = Math.min(0.5, weatherAlpha + 0.005);
+    } else if (weatherState === 'active') {
+        weatherAlpha = 0.5;
+        if (currentFrameTime > weatherTimer) {
+            weatherState = 'none';
+            currentWeather = 'Sunny';
+            document.getElementById('weatherDisplay').innerText = "Sunny";
+            document.getElementById('weatherDisplay').style.color = "#4fc3f7";
+        }
+    }
+
+    ctx.save();
+    ctx.globalAlpha = weatherAlpha;
+
+    if (currentWeather === 'Acid Rain') {
+        // Draw thin falling green lines
+        ctx.strokeStyle = '#76ff03';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = 0; i < 150; i++) {
+            let x = Math.random() * weatherWidth;
+            let y = Math.random() * weatherHeight;
+            ctx.moveTo(x, y);
+            ctx.lineTo(x - 5, y + 20); // Slanted rain
+        }
+        ctx.stroke();
+
+        // Gameplay effect: Slowly damage all structures
+        if (weatherState === 'active' && Math.random() < 0.1) {
+            structures.forEach(s => { s.hp -= 0.5; });
+        }
+
+    } else if (currentWeather === 'Heatwave') {
+        // Draw hot orange overlay
+        ctx.fillStyle = '#ff7043';
+        ctx.fillRect(0, 0, weatherWidth, weatherHeight);
+        
+        // Gameplay effect: Handled in the enemy loop (Tar no longer slows, burns instead)
+
+    } else if (currentWeather === 'Thunderstorm') {
+        // Dark blue overlay
+        ctx.fillStyle = '#1a237e';
+        ctx.fillRect(0, 0, weatherWidth, weatherHeight);
+
+        // Random Lightning Flashes
+        if (weatherState === 'active' && currentFrameTime - lastLightningStrike > Math.random() * 5000 + 2000) {
+            ctx.globalAlpha = 0.8;
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, weatherWidth, weatherHeight);
+            lastLightningStrike = currentFrameTime;
+            
+            // Strike a random enemy or tower
+            if (enemies.length > 0 && Math.random() < 0.7) {
+                let target = enemies[Math.floor(Math.random() * enemies.length)];
+                target.hp -= 50; if (target.hp <= 0) target.dead = true;
+                visualEffects.push({ type: 'lightning', x1: target.x, y1: 0, x2: target.x, y2: target.y, expires: currentFrameTime + 200 });
+            } else {
+                health -= 15; updateHealthUI();
+                visualEffects.push({ type: 'lightning', x1: player.x, y1: 0, x2: player.x, y2: player.y, expires: currentFrameTime + 200 });
+            }
+        }
+    }
+    ctx.restore();
 }
 
 showSaveSelect();
