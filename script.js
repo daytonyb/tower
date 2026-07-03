@@ -701,7 +701,7 @@ window.addEventListener('click', (event) => {
         else if (currentBlueprint === 'wind') { w = 30; h = 30; radius = 100; hp = 50 + wardHPBonus; }
         else if (currentBlueprint === 'decoy') { w = 30; h = 60; radius = 150 + (loudCarvingsLevel * 15); hp = 150 + wardHPBonus + reinforcedBarkHp; }
         else if (currentBlueprint === 'frost') { w = 120; h = 120; }
-        else if (currentBlueprint === 'focus') { w = 40; h = 40; radius = 100 * resonantGemLevel; hp = 30 + wardHPBonus; }
+        else if (currentBlueprint === 'focus') { w = 40; h = 40; radius = 100 * (1 + (resonantGemLevel * 0.10)); hp = 30 + wardHPBonus; }
         else if (currentBlueprint === 'crucible') { w = 50; h = 50; radius = 120 * gildedRadiusRad; hp = 80 + wardHPBonus; }
         else if (currentBlueprint === 'meteor') { w = 60; h = 60; hp = 200 + wardHPBonus + sturdyCasingHp; radius = 300 * (1 + (astralPayloadLevel * 0.15)); }
 
@@ -1461,7 +1461,7 @@ function animate() {
     // --- DRAW RETICLE / BLUEPRINTS ---
     if (currentBlueprint) {
         let w = 40, h = 40, radius = 0;
-        if (currentBlueprint === 'barricade') { w = 80; h = 20; } else if (currentBlueprint === 'tar') { w = 120; h = 120; } else if (currentBlueprint === 'wire') { w = 150; h = 40; } else if (currentBlueprint === 'tesla') { radius = 150; } else if (currentBlueprint === 'plague') { radius = plagueRadius; } else if (currentBlueprint === 'soul') { radius = 150 * wideNetRad; } else if (currentBlueprint === 'charm') { radius = 150 * charismaticReachRad; } else if (currentBlueprint === 'wind') { w = 30; h = 30; radius = 100; } else if (currentBlueprint === 'decoy') { w = 30; h = 60; radius = 150 + (loudCarvingsLevel * 15); } else if (currentBlueprint === 'frost') { w = 120; h = 120; } else if (currentBlueprint === 'focus') { w = 40; h = 40; radius = 100 * resonantGemLevel; } else if (currentBlueprint === 'crucible') { w = 50; h = 50; radius = 120 * gildedRadiusRad; } else if (currentBlueprint === 'meteor') { w = 60; h = 60; radius = 300 * (1 + (astralPayloadLevel * 0.15)); }
+        if (currentBlueprint === 'barricade') { w = 80; h = 20; } else if (currentBlueprint === 'tar') { w = 120; h = 120; } else if (currentBlueprint === 'wire') { w = 150; h = 40; } else if (currentBlueprint === 'tesla') { radius = 150; } else if (currentBlueprint === 'plague') { radius = plagueRadius; } else if (currentBlueprint === 'soul') { radius = 150 * wideNetRad; } else if (currentBlueprint === 'charm') { radius = 150 * charismaticReachRad; } else if (currentBlueprint === 'wind') { w = 30; h = 30; radius = 100; } else if (currentBlueprint === 'decoy') { w = 30; h = 60; radius = 150 + (loudCarvingsLevel * 15); } else if (currentBlueprint === 'frost') { w = 120; h = 120; } else if (currentBlueprint === 'focus') { w = 40; h = 40; radius = 100 * (1 + (resonantGemLevel * 0.10)); } else if (currentBlueprint === 'crucible') { w = 50; h = 50; radius = 120 * gildedRadiusRad; } else if (currentBlueprint === 'meteor') { w = 60; h = 60; radius = 300 * (1 + (astralPayloadLevel * 0.15)); }
 
         ctx.save(); ctx.translate(mouseX, mouseY); ctx.rotate(blueprintAngle);
         if (Math.hypot(player.x - mouseX, player.y - mouseY) <= restrictedRadius) { 
