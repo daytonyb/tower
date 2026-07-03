@@ -17,15 +17,15 @@ const ASSETS = {
     tarPit: new Image()
 };
 
-ASSETS.playerTower.src = 'tower.png';
-ASSETS.zombie.src = 'zombie.png';
-ASSETS.zombiePoisoned.src = 'zombie_poisoned.png';
-ASSETS.zombieCharmed.src = 'zombie_charmed.png';
-ASSETS.poisonBubbles.src = 'bubbles.png'; 
-ASSETS.boss.src = 'boss.png';
-ASSETS.bossPoisoned.src = 'boss_poisoned.png';
-ASSETS.mendingWard.src = 'mending.png';
-ASSETS.tarPit.src = 'tar.png';
+ASSETS.playerTower.src = 'artwork/tower.png';
+ASSETS.zombie.src = 'artwork/zombie.png';
+ASSETS.zombiePoisoned.src = 'artwork/zombie_poisoned.png';
+ASSETS.zombieCharmed.src = 'artwork/zombie_charmed.png';
+ASSETS.poisonBubbles.src = 'artwork/bubbles.png';
+ASSETS.boss.src = 'artwork/boss.png';
+ASSETS.bossPoisoned.src = 'artwork/boss_poisoned.png';
+ASSETS.mendingWard.src = 'artwork/mending.png';
+ASSETS.tarPit.src = 'artwork/tar.png';
 
 const xpText = document.getElementById('xpText');
 const xpBarFill = document.getElementById('xpBarFill');
@@ -41,8 +41,6 @@ const levelUpContainer = document.getElementById('levelUpContainer');
 const shopContainer = document.getElementById('shopContainer');
 const ammoContainer = document.getElementById('ammoContainer');
 const controlsTip = document.getElementById('controlsTip');
-const placementPhaseUI = document.getElementById('placementPhaseUI');
-const placementPhaseText = document.getElementById('placementPhaseText');
 
 let gameScale = 1;
 let logicalWidth = window.innerWidth;
@@ -220,24 +218,27 @@ const PRESTIGE_UPGRADE_DATA = {
     bloodReckoning: { name: "Blood Reckoning", desc: "-10% Spawn delay, +15% XP.", cost: 6, maxLevel: 5 },
     echoesOfPower: { name: "Echoes of Power", desc: "Start with +250 XP.", cost: 7, maxLevel: 5 },
     trueEnding: { name: "The Truth", desc: "Unlock the final mystery...", cost: 100, maxLevel: 1 },
-    // Perms & specific mechanics
-    permBarricade: { name: "Eternal Wall", desc: "Start with Wood Walls.", cost: 2, maxLevel: 4, type: 'barricade' },
+    
+    // New Blueprint Prestiges
+    stalwartDeflection: { name: "Stalwart Deflection", desc: "Barricades have 10% chance/level to dodge hits.", cost: 3, maxLevel: 5 },
     ironbark: { name: "Ironbark", desc: "Barricades reflect 1 dmg/level.", cost: 5, maxLevel: 5 },
     livingWood: { name: "Living Wood", desc: "Barricades regen 5 HP/sec per level.", cost: 6, maxLevel: 5 },
-    permTar: { name: "Eternal Tar", desc: "Start with Tar Pits.", cost: 3, maxLevel: 4, type: 'tar' },
+    fossilizedPitch: { name: "Fossilized Pitch", desc: "Tar stuns zombies after 3 seconds.", cost: 5, maxLevel: 1 },
     flammablePitch: { name: "Flammable Pitch", desc: "Spells ignite tar.", cost: 8, maxLevel: 3 },
-    permWire: { name: "Eternal Wire", desc: "Start with Barbed Wire.", cost: 3, maxLevel: 4, type: 'wire' },
+    rendingBarbs: { name: "Rending Barbs", desc: "Wire-hit zombies take +50% spell dmg.", cost: 5, maxLevel: 1 },
     bloodletting: { name: "Bloodletting", desc: "Wire kills grant more XP.", cost: 6, maxLevel: 3 },
-    permTesla: { name: "Genesis Spark", desc: "Start with Tesla Runes.", cost: 5, maxLevel: 4, type: 'tesla' },
+    voltaicFeedback: { name: "Voltaic Feedback", desc: "Tesla kills trigger extra lightning.", cost: 8, maxLevel: 3 },
     conduitStrike: { name: "Conduit Strike", desc: "Spells trigger Tesla zaps.", cost: 10, maxLevel: 3 },
-    permPlague: { name: "Eternal Plague", desc: "Start with Plague Totems.", cost: 5, maxLevel: 4, type: 'plague' },
+    noxiousWeakness: { name: "Noxious Weakness", desc: "Poisoned zombies deal 50% less dmg.", cost: 6, maxLevel: 1 },
     contagion: { name: "Contagion", desc: "Poison spreads on death.", cost: 8, maxLevel: 3 },
-    permSoul: { name: "Eternal Soul", desc: "Start with Soul Siphons.", cost: 5, maxLevel: 4, type: 'soul' },
+    harvestSurge: { name: "Harvest Surge", desc: "Placing Soul Siphons grants instant XP.", cost: 5, maxLevel: 3 },
     soulBattery: { name: "Soul Battery", desc: "Siphons reduce Ward CD.", cost: 7, maxLevel: 4 },
-    permMending: { name: "Aura of Life", desc: "Start with Mending Wards.", cost: 5, maxLevel: 4, type: 'mending' },
+    arcaneStimulation: { name: "Arcane Stimulation", desc: "Mending Ward heals also recharge 1 Ammo.", cost: 8, maxLevel: 1 },
     martyrsGrace: { name: "Martyr's Grace", desc: "Broken wards heal tower.", cost: 8, maxLevel: 3 },
-    permCharm: { name: "Eternal Mind", desc: "Start with Mind Wards.", cost: 5, maxLevel: 4, type: 'charm' },
+    frenziedThralls: { name: "Frenzied Thralls", desc: "Charmed zombies are faster & stronger.", cost: 8, maxLevel: 2 },
     undeadBetrayal: { name: "Undead Betrayal", desc: "Charmed explode on death.", cost: 8, maxLevel: 3 },
+
+    // Existing late game prestiges
     cuttingWinds: { name: "Cutting Winds", desc: "Wind glyph deals 2 dmg.", cost: 6, maxLevel: 3 },
     zephyrsBlessing: { name: "Zephyr's Blessing", desc: "Spells thru wind deal more dmg.", cost: 9, maxLevel: 3 },
     splinteringMockery: { name: "Splintering Mockery", desc: "Decoy slows on death.", cost: 5, maxLevel: 1 },
@@ -286,12 +287,15 @@ let sturdyCasingHp = 0, impactTremorsStun = 0, armageddonKills = 15;
 
 let cuttingWindsDmg = 0, splinteringMockeryActive = false, shatterStrikeActive = false, prismaticBeamBounces = 0, philosophersStoneActive = false, scorchedEarthActive = false;
 
-// Prestige Scaling
+// New Prestige Scaling Mechanics
+let stalwartDeflectionChance = 0, fossilizedPitchActive = false, rendingBarbsActive = false, voltaicFeedbackZaps = 0;
+let noxiousWeaknessActive = false, harvestSurgeXp = 0, arcaneStimulationActive = false, frenziedThrallsBonus = 0;
+
 let goldenEpochBonus, ricochetBounces, vampiricChance, soulBatteryReduction, bountyHunterBonus, ironbarkDamage, livingWoodRegen;
 let chronoSurgeActive = false, chronoSurgeMult = 1, bloodReckoningReduction = 0, echoesOfPowerXP = 0;
 let lureSpawnReduction = 0, overloadChance = 0, bossLevelThreshold = 5, bossTimerReduction = 0, baseTimeDilation = 1;
 
-let animationId, isPaused = false, isGameStarted = false, isPlacingPerms = false; 
+let animationId, isPaused = false, isGameStarted = false; 
 let survivalTimeMs = 0, lastFrameTime = Date.now(), formattedTime = "00:00";
 let level = 1, xp = 0, xpToNextLevel = 100, lastBossLevel = 0; 
 let killCount = 0, runGold = 0, levelUpsQueued = 0;
@@ -300,7 +304,7 @@ let nextBossTime = 300000;
 let bossesKilled = 0, crystalsSpawned = false, victoryAchieved = false;
 const crystals = [];
 
-let currentBlueprint = null, blueprintAngle = 0, pendingPerms = [];
+let currentBlueprint = null, blueprintAngle = 0;
 const structures = [], spells = [], enemies = [], visualEffects = []; 
 let lastRechargeTime = 0;
 const restrictedRadius = 120; 
@@ -347,7 +351,6 @@ function applyUpgrades() {
     transmutationLevel = u.transmutation || 0;
     astralPayloadLevel = u.astralPayload || 0;
 
-    // New Scaled Upgrades Math
     stickyResidueSlow = u.stickyResidue > 0 ? 0.10 + (u.stickyResidue - 1) * 0.05 : 0;
     flammablePitchDuration = p.flammablePitch > 0 ? 2000 + (p.flammablePitch - 1) * 1000 : 0;
     tetanusDamage = u.tetanusCoating > 0 ? 1.0 + (u.tetanusCoating - 1) * 0.5 : 0;
@@ -403,6 +406,16 @@ function applyUpgrades() {
     prismaticBeamBounces = (p.prismaticBeam || 0);
     philosophersStoneActive = (p.philosophersStone || 0) > 0;
     scorchedEarthActive = (p.scorchedEarth || 0) > 0;
+
+    // Set new prestige upgrade values
+    stalwartDeflectionChance = (p.stalwartDeflection || 0) * 0.10;
+    fossilizedPitchActive = (p.fossilizedPitch || 0) > 0;
+    rendingBarbsActive = (p.rendingBarbs || 0) > 0;
+    voltaicFeedbackZaps = (p.voltaicFeedback || 0);
+    noxiousWeaknessActive = (p.noxiousWeakness || 0) > 0;
+    harvestSurgeXp = (p.harvestSurge || 0) * 100;
+    arcaneStimulationActive = (p.arcaneStimulation || 0) > 0;
+    frenziedThrallsBonus = (p.frenziedThralls || 0) * 0.50;
 
     lureSpawnReduction = u.cursedLure * 400; 
     overloadChance = u.arcaneOverload * 0.05; 
@@ -523,33 +536,13 @@ function refreshPrestigeShop() {
 function startGame() {
     applyUpgrades(); updateAmmoUI(); updateGoldUI();
     mainMenu.style.display = 'none'; 
-    isGameStarted = true; isPlacingPerms = false;
-    
-    structures.length = 0; pendingPerms = []; levelUpsQueued = 0;
-
-    for (let key in PRESTIGE_UPGRADE_DATA) {
-        if (PRESTIGE_UPGRADE_DATA[key].type) {
-            let amount = savedData.prestigeUpgrades[key] || 0;
-            for (let i = 0; i < amount; i++) pendingPerms.push(PRESTIGE_UPGRADE_DATA[key].type);
-        }
-    }
-
-    if (pendingPerms.length > 0) {
-        isPlacingPerms = true; currentBlueprint = pendingPerms.shift();
-        placementPhaseUI.style.display = 'block'; controlsTip.style.display = 'block';
-        updatePlacementText();
-    } else {
-        startActualRun();
-    }
-}
-
-function updatePlacementText() {
-    const typeName = BLUEPRINT_DB[currentBlueprint].name;
-    placementPhaseText.innerText = `Click to place your permanent ${typeName}.\n(${pendingPerms.length + 1} remaining)`;
+    isGameStarted = true;
+    structures.length = 0; levelUpsQueued = 0;
+    startActualRun();
 }
 
 function startActualRun() {
-    isPlacingPerms = false; placementPhaseUI.style.display = 'none'; controlsTip.style.display = 'none';
+    controlsTip.style.display = 'none';
     lastRechargeTime = Date.now(); lastFrameTime = Date.now(); lastPlaytimeSave = Date.now(); 
     
     if (goldenEpochBonus > 0) { savedData.gold += goldenEpochBonus; runGold += goldenEpochBonus; saveGame(); updateGoldUI(); }
@@ -558,7 +551,7 @@ function startActualRun() {
 }
 
 function resetGame() {
-    if (isGameStarted && !isPlacingPerms) {
+    if (isGameStarted) {
         let diff = Date.now() - lastPlaytimeSave;
         savedData.unclaimedPlaytime += diff; savedData.totalPlaytime += diff; saveGame(); updatePrestigeUI();
     }
@@ -566,13 +559,12 @@ function resetGame() {
     gameOverModal.style.display = 'none'; pauseMenu.style.display = 'none';
     document.getElementById('victoryModal').style.display = 'none';
     document.getElementById('trueVictoryModal').style.display = 'none';
-    placementPhaseUI.style.display = 'none';
     
     switchMenuTab('tab-start', document.getElementById('btnTabStart'));
     mainMenu.style.display = 'flex'; 
     
-    isGameStarted = false; isPlacingPerms = false; isPaused = false; currentBlueprint = null; controlsTip.style.display = 'none';
-    bossesKilled = 0; crystalsSpawned = false; victoryAchieved = false; crystals.length = 0; pendingPerms = []; levelUpsQueued = 0;
+    isGameStarted = false; isPaused = false; currentBlueprint = null; controlsTip.style.display = 'none';
+    bossesKilled = 0; crystalsSpawned = false; victoryAchieved = false; crystals.length = 0; levelUpsQueued = 0;
     
     survivalTimeMs = 0; formattedTime = "00:00"; timerDisplay.innerText = formattedTime;
     xp = 0; lastBossLevel = 0; killCount = 0; runGold = 0;
@@ -584,7 +576,7 @@ function resetGame() {
 }
 
 function togglePauseMenu() {
-    if (!isGameStarted || isPlacingPerms || gameOverModal.style.display === 'flex' || levelUpModal.style.display === 'flex' || document.getElementById('victoryModal').style.display === 'flex' || document.getElementById('trueVictoryModal').style.display === 'flex') return;
+    if (!isGameStarted || gameOverModal.style.display === 'flex' || levelUpModal.style.display === 'flex' || document.getElementById('victoryModal').style.display === 'flex' || document.getElementById('trueVictoryModal').style.display === 'flex') return;
 
     if (pauseMenu.style.display === 'flex') {
         pauseMenu.style.display = 'none'; isPaused = false; canvas.style.cursor = 'none';
@@ -707,21 +699,17 @@ window.addEventListener('click', (event) => {
         else if (currentBlueprint === 'crucible') { w = 50; h = 50; radius = 120 * gildedRadiusRad; hp = 80 + wardHPBonus; }
         else if (currentBlueprint === 'meteor') { w = 60; h = 60; hp = 200 + wardHPBonus + sturdyCasingHp; radius = 300 * (1 + (astralPayloadLevel * 0.15)); }
 
-        let isPerm = isPlacingPerms;
-        if (isPerm) { hp = 99999; w = w * 0.75; h = h * 0.75; radius = Math.max(radius * 0.75, 50); }
-        structures.push({ type: currentBlueprint, x: clickX, y: clickY, w: w, h: h, angle: blueprintAngle, hp: hp, radius: radius, hitZombies: new Map(), lastTick: Date.now(), isPermanent: isPerm });
+        structures.push({ type: currentBlueprint, x: clickX, y: clickY, w: w, h: h, angle: blueprintAngle, hp: hp, radius: radius, hitZombies: new Map(), lastTick: Date.now() });
 
-        if (isPlacingPerms) {
-            if (pendingPerms.length > 0) { currentBlueprint = pendingPerms.shift(); updatePlacementText(); } 
-            else { currentBlueprint = null; startActualRun(); }
-        } else {
-            currentBlueprint = null; controlsTip.style.display = 'none';
-            if (levelUpsQueued > 0) processLevelUpQueue(); else { isPaused = false; lastFrameTime = Date.now(); lastPlaytimeSave = Date.now(); spawnWave(); }
-        }
+        // Harvest Surge Check
+        if (currentBlueprint === 'soul' && harvestSurgeXp > 0) { addXp(harvestSurgeXp); }
+
+        currentBlueprint = null; controlsTip.style.display = 'none';
+        if (levelUpsQueued > 0) processLevelUpQueue(); else { isPaused = false; lastFrameTime = Date.now(); lastPlaytimeSave = Date.now(); spawnWave(); }
         return; 
     }
 
-    if (currentAmmo <= 0 || distFromTower <= restrictedRadius || isPlacingPerms) return; 
+    if (currentAmmo <= 0 || distFromTower <= restrictedRadius) return; 
 
     if (currentAmmo === maxAmmo) lastRechargeTime = Date.now();
     currentAmmo--; updateAmmoUI();
@@ -766,18 +754,18 @@ function addXp(amount) {
     xp += Math.floor(amount * xpMultiplier); 
     while (xp >= xpToNextLevel) { xp -= xpToNextLevel; level++; xpToNextLevel = Math.floor(xpToNextLevel * 1.4); levelUpsQueued++; }
     xpBarFill.style.width = `${Math.min(100, (xp / xpToNextLevel) * 100)}%`; xpText.innerHTML = `${xp} / ${xpToNextLevel}`;
-    if (levelUpsQueued > 0 && !isPaused && !currentBlueprint && !isPlacingPerms) processLevelUpQueue();
+    if (levelUpsQueued > 0 && !isPaused && !currentBlueprint) processLevelUpQueue();
 }
 
 // --- ENEMY SPAWNING ---
 function spawnBossEnemy() {
     const angle = Math.random() * Math.PI * 2; const x = player.x + Math.cos(angle) * (logicalWidth / 2 + 100); const y = player.y + Math.sin(angle) * (logicalHeight / 2 + 100);
     const bossHp = 80 + (level * 15); const baseBossXp = 200 + (level * 50); const brMultiplier = 1 + bloodReckoningReduction * 1.5;
-    enemies.push({ x, y, radius: 35, baseSpeed: 0.08, hp: bossHp, maxHp: bossHp, xpDrop: Math.floor(baseBossXp * brMultiplier), dead: false, isBoss: true, poisoned: false, charmed: false, inTar: false, chill: 0, frozen: 0, splinterSlow: 0, stickySlow: 0, updraftSlow: 0, stunned: 0, tetanus: false, rooted: 0 });
+    enemies.push({ x, y, radius: 35, baseSpeed: 0.08, hp: bossHp, maxHp: bossHp, xpDrop: Math.floor(baseBossXp * brMultiplier), dead: false, isBoss: true, poisoned: false, charmed: false, inTar: false, tarTime: 0, rending: false, lastTeslaHit: 0, chill: 0, frozen: 0, splinterSlow: 0, stickySlow: 0, updraftSlow: 0, stunned: 0, tetanus: false, rooted: 0 });
 }
 
 function spawnWave() {
-    if (isPaused || !isGameStarted || isPlacingPerms) return;
+    if (isPaused || !isGameStarted) return;
     const minSpawn = Math.max(1000, 3000 - lureSpawnReduction); const maxSpawn = Math.max(2000, 7000 - lureSpawnReduction);
     const delayMult = Math.max(0.2, 1 - bloodReckoningReduction); const nextSpawnDelay = (Math.random() * (maxSpawn - minSpawn) + minSpawn) * delayMult;
     
@@ -793,7 +781,7 @@ function spawnWave() {
         for (let i = 0; i < groupSize; i++) {
             const x = groupX + (Math.random() - 0.5) * 80; const y = groupY + (Math.random() - 0.5) * 80;
             const speed = (0.4 + Math.random() * 0.3) * speedMultiplier; const hp = Math.floor((Math.random() * 11 + 5) * hpMultiplier);
-            enemies.push({ x, y, radius: 15, baseSpeed: speed, hp: hp, maxHp: hp, xpDrop: Math.floor((hp + speed * 10) * brMultiplier), dead: false, isBoss: false, poisoned: false, charmed: false, inTar: false, chill: 0, frozen: 0, splinterSlow: 0, stickySlow: 0, updraftSlow: 0, stunned: 0, tetanus: false, rooted: 0 });
+            enemies.push({ x, y, radius: 15, baseSpeed: speed, hp: hp, maxHp: hp, xpDrop: Math.floor((hp + speed * 10) * brMultiplier), dead: false, isBoss: false, poisoned: false, charmed: false, inTar: false, tarTime: 0, rending: false, lastTeslaHit: 0, chill: 0, frozen: 0, splinterSlow: 0, stickySlow: 0, updraftSlow: 0, stunned: 0, tetanus: false, rooted: 0 });
         }
     }
     spawnTimer = setTimeout(spawnWave, nextSpawnDelay);
@@ -825,7 +813,7 @@ function animate() {
     const deltaTime = (currentFrameTime - lastFrameTime) * activeTimeDilation;
     lastFrameTime = currentFrameTime;
 
-    if (!isPaused && isGameStarted && !isPlacingPerms) {
+    if (!isPaused && isGameStarted) {
         survivalTimeMs += deltaTime; const totalSeconds = Math.floor(survivalTimeMs / 1000);
         formattedTime = `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`;
         timerDisplay.innerText = formattedTime;
@@ -845,10 +833,10 @@ function animate() {
         const struct = structures[i];
         if (struct.expires && currentFrameTime > struct.expires) { structures.splice(i, 1); continue; }
         
-        if (!isPaused && isGameStarted && !isPlacingPerms) {
+        if (!isPaused && isGameStarted) {
             if (struct.type === 'barricade' && livingWoodRegen > 0) {
                 if (!struct.lastRegenTick) struct.lastRegenTick = currentFrameTime;
-                if (currentFrameTime - struct.lastRegenTick >= 1000) { struct.hp = Math.min(struct.isPermanent ? 99999 : barricadeHP, struct.hp + livingWoodRegen); struct.lastRegenTick = currentFrameTime; }
+                if (currentFrameTime - struct.lastRegenTick >= 1000) { struct.hp = Math.min(barricadeHP, struct.hp + livingWoodRegen); struct.lastRegenTick = currentFrameTime; }
             } else if (struct.type === 'tesla') {
                 if (currentFrameTime - struct.lastTick > 2000) {
                     let inRange = enemies.filter(e => !e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius);
@@ -857,6 +845,7 @@ function animate() {
                         for (let z = 0; z < zapCount; z++) {
                             const target = inRange[z]; target.hp -= (teslaDamage + (target.inTar ? brittlePitchLevel : 0)); 
                             if (staticFieldStun > 0) target.stunned = staticFieldStun;
+                            target.lastTeslaHit = currentFrameTime;
                             if (target.hp <= 0) target.dead = true;
                             visualEffects.push({ type: 'lightning', x1: struct.x, y1: struct.y, x2: target.x, y2: target.y, expires: currentFrameTime + 150 });
                         }
@@ -895,6 +884,7 @@ function animate() {
                     if (currentFrameTime - struct.lastTick > (mendingCooldown * localCdMult)) { 
                         if (health < maxHealth) { health++; updateHealthUI(); } 
                         else if (overhealMax > 0 && towerShield < overhealMax) { towerShield++; }
+                        if (arcaneStimulationActive) { currentAmmo = Math.min(maxAmmo, currentAmmo + 1); updateAmmoUI(); }
                         struct.lastTick = currentFrameTime;
                     }
                 } else if (struct.type === 'charm') {
@@ -910,28 +900,27 @@ function animate() {
         }
 
         ctx.save(); ctx.translate(struct.x, struct.y); ctx.rotate(struct.angle);
-        if (struct.type === 'barricade') { ctx.fillStyle = struct.isPermanent ? '#5C3317' : '#8B4513'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#5C3317'; ctx.lineWidth = 3; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); } 
+        if (struct.type === 'barricade') { ctx.fillStyle = '#8B4513'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.strokeStyle = '#5C3317'; ctx.lineWidth = 3; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); } 
         else if (struct.type === 'tar') { 
             if (ASSETS.tarPit.complete && ASSETS.tarPit.naturalHeight !== 0) { ctx.drawImage(ASSETS.tarPit, -struct.w/2, -struct.h/2, struct.w, struct.h); } else { ctx.fillStyle = 'rgba(30, 30, 30, 0.7)'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h); }
             if (struct.onFire) { ctx.fillStyle = 'rgba(255,69,0,0.4)'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h); }
-            if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); }
         } 
-        else if (struct.type === 'wire') { ctx.fillStyle = 'rgba(150, 150, 150, 0.3)'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#777777'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.setLineDash([]); } 
-        else if (struct.type === 'tesla') { ctx.fillStyle = '#00e5ff'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill(); if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.stroke(); } ctx.fillStyle = 'rgba(0, 229, 255, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
-        else if (struct.type === 'plague') { ctx.fillStyle = '#1b5e20'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.fill(); if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.closePath(); ctx.stroke(); } ctx.fillStyle = 'rgba(27, 94, 32, 0.2)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
-        else if (struct.type === 'soul') { ctx.fillStyle = '#aa00ff'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.fill(); if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.closePath(); ctx.stroke(); } ctx.fillStyle = 'rgba(170, 0, 255, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
-        else if (struct.type === 'mending') { if (ASSETS.mendingWard.complete && ASSETS.mendingWard.naturalHeight !== 0) { ctx.drawImage(ASSETS.mendingWard, -15, -45, 30, 60); } if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.strokeRect(-15, -15, 30, 30); } } 
-        else if (struct.type === 'charm') { ctx.fillStyle = '#29b6f6'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.fill(); if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.closePath(); ctx.stroke(); } ctx.fillStyle = 'rgba(41, 182, 246, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
-        else if (struct.type === 'wind') { ctx.fillStyle = '#b0bec5'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill(); if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.stroke(); } ctx.fillStyle = 'rgba(176, 190, 197, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
-        else if (struct.type === 'decoy') { ctx.fillStyle = '#5d4037'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#8d6e63'; ctx.lineWidth = 2; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.strokeStyle = 'rgba(93, 64, 55, 0.2)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.stroke(); } 
-        else if (struct.type === 'frost') { ctx.fillStyle = 'rgba(129, 212, 250, 0.5)'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.strokeStyle = struct.isPermanent ? '#e040fb' : '#4fc3f7'; ctx.lineWidth = 2; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); } 
-        else if (struct.type === 'focus') { ctx.fillStyle = '#ce93d8'; ctx.beginPath(); ctx.moveTo(0, -struct.h/2); ctx.lineTo(struct.w/2, 0); ctx.lineTo(0, struct.h/2); ctx.lineTo(-struct.w/2, 0); ctx.fill(); if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -struct.h/2); ctx.lineTo(struct.w/2, 0); ctx.lineTo(0, struct.h/2); ctx.lineTo(-struct.w/2, 0); ctx.closePath(); ctx.stroke(); } ctx.fillStyle = 'rgba(206, 147, 216, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
-        else if (struct.type === 'crucible') { ctx.fillStyle = '#424242'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#ffca28'; ctx.beginPath(); ctx.arc(0, 0, struct.w/4, 0, Math.PI*2); ctx.fill(); if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.stroke(); } ctx.fillStyle = 'rgba(255, 202, 40, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
-        else if (struct.type === 'meteor') { ctx.fillStyle = '#ff7043'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill(); if (struct.isPermanent) { ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 2; ctx.stroke(); } } 
+        else if (struct.type === 'wire') { ctx.fillStyle = 'rgba(150, 150, 150, 0.3)'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.strokeStyle = '#777777'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.setLineDash([]); } 
+        else if (struct.type === 'tesla') { ctx.fillStyle = '#00e5ff'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'rgba(0, 229, 255, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
+        else if (struct.type === 'plague') { ctx.fillStyle = '#1b5e20'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.fill(); ctx.fillStyle = 'rgba(27, 94, 32, 0.2)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
+        else if (struct.type === 'soul') { ctx.fillStyle = '#aa00ff'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.fill(); ctx.fillStyle = 'rgba(170, 0, 255, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
+        else if (struct.type === 'mending') { if (ASSETS.mendingWard.complete && ASSETS.mendingWard.naturalHeight !== 0) { ctx.drawImage(ASSETS.mendingWard, -15, -45, 30, 60); } } 
+        else if (struct.type === 'charm') { ctx.fillStyle = '#29b6f6'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.fill(); ctx.fillStyle = 'rgba(41, 182, 246, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
+        else if (struct.type === 'wind') { ctx.fillStyle = '#b0bec5'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'rgba(176, 190, 197, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
+        else if (struct.type === 'decoy') { ctx.fillStyle = '#5d4037'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.strokeStyle = '#8d6e63'; ctx.lineWidth = 2; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.strokeStyle = 'rgba(93, 64, 55, 0.2)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.stroke(); } 
+        else if (struct.type === 'frost') { ctx.fillStyle = 'rgba(129, 212, 250, 0.5)'; ctx.fillRect(-struct.w/2, -struct.h/2, struct.w, struct.h); ctx.strokeStyle = '#4fc3f7'; ctx.lineWidth = 2; ctx.strokeRect(-struct.w/2, -struct.h/2, struct.w, struct.h); } 
+        else if (struct.type === 'focus') { ctx.fillStyle = '#ce93d8'; ctx.beginPath(); ctx.moveTo(0, -struct.h/2); ctx.lineTo(struct.w/2, 0); ctx.lineTo(0, struct.h/2); ctx.lineTo(-struct.w/2, 0); ctx.fill(); ctx.fillStyle = 'rgba(206, 147, 216, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
+        else if (struct.type === 'crucible') { ctx.fillStyle = '#424242'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#ffca28'; ctx.beginPath(); ctx.arc(0, 0, struct.w/4, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'rgba(255, 202, 40, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, struct.radius, 0, Math.PI*2); ctx.fill(); } 
+        else if (struct.type === 'meteor') { ctx.fillStyle = '#ff7043'; ctx.beginPath(); ctx.arc(0, 0, struct.w/2, 0, Math.PI*2); ctx.fill(); } 
         else if (struct.type === 'fire_pool') { ctx.fillStyle = 'rgba(255, 87, 34, 0.4)'; ctx.beginPath(); ctx.arc(0, 0, struct.w, 0, Math.PI*2); ctx.fill(); }
         ctx.restore();
         
-        if (struct.hp <= 0 && !struct.isPermanent && struct.type !== 'fire_pool') {
+        if (struct.hp <= 0 && struct.type !== 'fire_pool') {
             if (struct.type === 'barricade' && barricadeExplosionDamage > 0) {
                 enemies.forEach(e => { if (!e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= 80) { e.hp -= (barricadeExplosionDamage + (e.inTar ? brittlePitchLevel : 0)); if (e.hp <= 0) e.dead = true; } });
                 visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: 80, expires: currentFrameTime + 200, color: 'rgba(255, 69, 0, 0.5)' });
@@ -946,7 +935,7 @@ function animate() {
                 }, 2000); }
             } else if (struct.type === 'decoy') {
                 if (splinteringMockeryActive) { enemies.forEach(e => { if (Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) e.splinterSlow = 3000; }); visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: struct.radius, expires: currentFrameTime + 200, color: 'rgba(141, 110, 99, 0.5)' }); }
-                if (illusoryDoubleHp > 0) structures.push({ type: 'decoy', x: struct.x + 20, y: struct.y + 20, w: 20, h: 40, angle: 0, hp: (150 + wardHPBonus + reinforcedBarkHp) * illusoryDoubleHp, radius: struct.radius * 0.7, hitZombies: new Map(), lastTick: currentFrameTime, isPermanent: false });
+                if (illusoryDoubleHp > 0) structures.push({ type: 'decoy', x: struct.x + 20, y: struct.y + 20, w: 20, h: 40, angle: 0, hp: (150 + wardHPBonus + reinforcedBarkHp) * illusoryDoubleHp, radius: struct.radius * 0.7, hitZombies: new Map(), lastTick: currentFrameTime });
             } else if (struct.type === 'mending' && martyrsGraceHeal > 0) {
                 health = Math.min(maxHealth, health + martyrsGraceHeal); updateHealthUI();
                 visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: struct.radius, expires: currentFrameTime + 200, color: 'rgba(255, 215, 0, 0.5)' });
@@ -955,7 +944,7 @@ function animate() {
         }
     }
 
-    if (!isPaused && isGameStarted && !isPlacingPerms) {
+    if (!isPaused && isGameStarted) {
         spells.forEach((spell, index) => {
             if (spell.state === 'flying') {
                 spell.progress += 15 / spell.distance;
@@ -974,7 +963,7 @@ function animate() {
             } else if (spell.state === 'exploding') {
                 spell.radius += 4; 
                 if (flammablePitchDuration > 0) { structures.forEach(s => { if (s.type === 'tar' && Math.hypot(spell.targetX - s.x, spell.targetY - s.y) <= spell.radius + s.w/2) s.onFire = currentFrameTime + flammablePitchDuration; }); }
-                if (conduitStrikeBounces > 0) { structures.forEach(s => { if (s.type === 'tesla' && Math.hypot(spell.targetX - s.x, spell.targetY - s.y) <= spell.radius + s.w/2 && !spell.triggeredTesla) { spell.triggeredTesla = true; let inRange = enemies.filter(e => !e.charmed && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius); if (inRange.length > 0) { inRange.sort(() => Math.random() - 0.5); const zapCount = Math.min(conduitStrikeBounces, inRange.length); for (let z = 0; z < zapCount; z++) { const target = inRange[z]; target.hp -= teslaDamage; if (target.hp <= 0) target.dead = true; visualEffects.push({ type: 'lightning', x1: s.x, y1: s.y, x2: target.x, y2: target.y, expires: currentFrameTime + 150 }); } } } }); }
+                if (conduitStrikeBounces > 0) { structures.forEach(s => { if (s.type === 'tesla' && Math.hypot(spell.targetX - s.x, spell.targetY - s.y) <= spell.radius + s.w/2 && !spell.triggeredTesla) { spell.triggeredTesla = true; let inRange = enemies.filter(e => !e.charmed && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius); if (inRange.length > 0) { inRange.sort(() => Math.random() - 0.5); const zapCount = Math.min(conduitStrikeBounces, inRange.length); for (let z = 0; z < zapCount; z++) { const target = inRange[z]; target.hp -= teslaDamage; target.lastTeslaHit = currentFrameTime; if (target.hp <= 0) target.dead = true; visualEffects.push({ type: 'lightning', x1: s.x, y1: s.y, x2: target.x, y2: target.y, expires: currentFrameTime + 150 }); } } } }); }
 
                 enemies.forEach(e => {
                     if (e.dead || e.charmed) return; 
@@ -982,6 +971,7 @@ function animate() {
                         spell.hitEnemies.add(e); 
                         let dmg = Math.floor(Math.random() * 4) + 3 + spell.damageBonus + (e.inTar ? brittlePitchLevel : 0);
                         if (shatterStrikeActive && e.frozen > 0) dmg *= 2;
+                        if (rendingBarbsActive && e.rending) dmg *= 1.5;
                         e.hp -= dmg;
                         if (e.hp <= 0) {
                             e.dead = true;
@@ -1038,6 +1028,20 @@ function animate() {
                 } 
                 else if (killCount % goldDropThreshold === 0) { savedData.gold += 1; runGold += 1; saveGame(); updateGoldUI(); }
 
+                // Voltaic Feedback Logic
+                if (currentFrameTime - e.lastTeslaHit < 500 && voltaicFeedbackZaps > 0) {
+                    let nearby = enemies.filter(o => !o.dead && !o.charmed && Math.hypot(o.x - e.x, o.y - e.y) <= 150);
+                    if (nearby.length > 0) {
+                        nearby.sort(() => Math.random() - 0.5);
+                        let zaps = Math.min(voltaicFeedbackZaps, nearby.length);
+                        for(let z=0; z<zaps; z++) {
+                            nearby[z].hp -= (teslaDamage / 2);
+                            if(nearby[z].hp <= 0) nearby[z].dead = true;
+                            visualEffects.push({ type: 'lightning', x1: e.x, y1: e.y, x2: nearby[z].x, y2: nearby[z].y, expires: currentFrameTime + 150 });
+                        }
+                    }
+                }
+
                 let inCrucible = false; let finalXp = e.xpDrop;
                 if (e.wireHit && bloodlettingXp > 0) finalXp *= (1 + bloodlettingXp);
 
@@ -1086,9 +1090,9 @@ function animate() {
             if (activeDecoy && !e.charmed) targetAngle = Math.atan2(activeDecoy.y - e.y, activeDecoy.x - e.x);
 
             if (e.charmed) {
-                speedModifier = 1.2; let closestDist = Infinity; let closestEnemy = null;
+                speedModifier = 1.2 * (1 + frenziedThrallsBonus); let closestDist = Infinity; let closestEnemy = null;
                 for (let j = 0; j < enemies.length; j++) { const other = enemies[j]; if (i !== j && !other.charmed && !other.dead) { const dist = Math.hypot(other.x - e.x, other.y - e.y); if (dist < closestDist) { closestDist = dist; closestEnemy = other; } } }
-                if (closestEnemy) { targetAngle = Math.atan2(closestEnemy.y - e.y, closestEnemy.x - e.x); if (closestDist < e.radius + closestEnemy.radius + 2) { closestEnemy.hp -= (2 * zealousConvertsDmg); e.hp -= 1; if (closestEnemy.hp <= 0) closestEnemy.dead = true; if (e.hp <= 0) e.dead = true; } } else { targetAngle = Math.atan2(e.y - player.y, e.x - player.x); }
+                if (closestEnemy) { targetAngle = Math.atan2(closestEnemy.y - e.y, closestEnemy.x - e.x); if (closestDist < e.radius + closestEnemy.radius + 2) { closestEnemy.hp -= (2 * zealousConvertsDmg * (1 + frenziedThrallsBonus)); e.hp -= 1; if (closestEnemy.hp <= 0) closestEnemy.dead = true; if (e.hp <= 0) e.dead = true; } } else { targetAngle = Math.atan2(e.y - player.y, e.x - player.x); }
             } else {
                 structures.forEach(struct => {
                     if (struct.type === 'tar' || struct.type === 'frost') {
@@ -1100,7 +1104,8 @@ function animate() {
                         const col = getCollisionData(e, struct);
                         if (col.collided) {
                             if (struct.type === 'wire') {
-                                e.wireHit = true; const lastHitTime = struct.hitZombies.get(e) || 0;
+                                e.wireHit = true; if (rendingBarbsActive) e.rending = true;
+                                const lastHitTime = struct.hitZombies.get(e) || 0;
                                 if (currentFrameTime - lastHitTime >= 500) {
                                     struct.hitZombies.set(e, currentFrameTime); e.hp -= (Math.floor(Math.random() * 6) + 5 + wireDamageBonus + (e.inTar ? brittlePitchLevel : 0));
                                     if (tetanusDamage > 0) e.tetanus = true;
@@ -1114,8 +1119,16 @@ function animate() {
                     }
                 });
 
-                if (hitTarget && !hitTarget.isPermanent) {
-                    hitTarget.hp -= e.isBoss ? 2.5 : 0.5;
+                if (hitTarget) {
+                    let structDmg = e.isBoss ? 2.5 : 0.5;
+                    if (e.poisoned && noxiousWeaknessActive) structDmg /= 2;
+
+                    if (hitTarget.type === 'barricade' && Math.random() < stalwartDeflectionChance) {
+                        // Dodged the hit!
+                    } else {
+                        hitTarget.hp -= structDmg;
+                    }
+
                     if (hitTarget.type === 'barricade' && ironbarkDamage > 0) { e.hp -= ironbarkDamage; if (e.hp <= 0) e.dead = true; }
                     if (hitTarget.type === 'decoy' && thornyCarvingsDmg > 0) { e.hp -= thornyCarvingsDmg; if (e.hp <= 0) e.dead = true; }
                 }
@@ -1123,9 +1136,21 @@ function animate() {
                 if (Math.hypot(player.x - e.x, player.y - e.y) - e.radius - 30 < 1) {
                     enemies.splice(i, 1); 
                     let dmgIn = e.isBoss ? 40 : 10;
+                    if (e.poisoned && noxiousWeaknessActive) dmgIn /= 2;
+
                     if (towerShield > 0) { let block = Math.min(towerShield, dmgIn); towerShield -= block; dmgIn -= block; }
                     health -= dmgIn; chronoSurgeActive = false; updateHealthUI(); continue; 
                 }
+            }
+
+            // Apply Fossilized Pitch logic
+            if (e.inTar) {
+                e.tarTime += deltaTime;
+                if (fossilizedPitchActive && e.tarTime >= 3000) {
+                    e.stunned = 2000; e.tarTime = 0;
+                }
+            } else {
+                e.tarTime = 0;
             }
 
             if (e.frozen > 0) { e.frozen -= deltaTime; speedModifier = 0; }
@@ -1169,7 +1194,7 @@ function animate() {
         if (e.charmed) imgToDraw = ASSETS.zombieCharmed; else if (e.poisoned) imgToDraw = e.isBoss ? ASSETS.bossPoisoned : ASSETS.zombiePoisoned;
 
         const size = e.radius * 3; const offset = -size / 2;
-        if (e.frozen > 0) { ctx.fillStyle = 'rgba(129, 212, 250, 0.4)'; ctx.fillRect(offset, offset, size, size); }
+        if (e.frozen > 0 || e.stunned > 0) { ctx.fillStyle = e.frozen > 0 ? 'rgba(129, 212, 250, 0.4)' : 'rgba(255, 215, 0, 0.4)'; ctx.fillRect(offset, offset, size, size); }
         if (imgToDraw.complete && imgToDraw.naturalHeight !== 0) ctx.drawImage(imgToDraw, offset, offset, size, size);
 
         if (e.poisoned && !e.charmed && ASSETS.poisonBubbles.width > 0) {
@@ -1194,30 +1219,27 @@ function animate() {
         let w = 40, h = 40, radius = 0;
         if (currentBlueprint === 'barricade') { w = 80; h = 20; } else if (currentBlueprint === 'tar') { w = 120; h = 120; } else if (currentBlueprint === 'wire') { w = 150; h = 40; } else if (currentBlueprint === 'tesla') { radius = 150; } else if (currentBlueprint === 'plague') { radius = plagueRadius; } else if (currentBlueprint === 'soul') { radius = 150 * wideNetRad; } else if (currentBlueprint === 'charm') { radius = 150 * charismaticReachRad; } else if (currentBlueprint === 'wind') { w = 30; h = 30; radius = 100; } else if (currentBlueprint === 'decoy') { w = 30; h = 60; radius = 150 + (loudCarvingsLevel * 15); } else if (currentBlueprint === 'frost') { w = 120; h = 120; } else if (currentBlueprint === 'focus') { w = 40; h = 40; radius = 100 * resonantGemLevel; } else if (currentBlueprint === 'crucible') { w = 50; h = 50; radius = 120 * gildedRadiusRad; } else if (currentBlueprint === 'meteor') { w = 60; h = 60; radius = 300 * (1 + (astralPayloadLevel * 0.15)); }
 
-        let isPerm = isPlacingPerms;
-        if (isPerm) { w = w * 0.75; h = h * 0.75; radius = Math.max(radius * 0.75, 50); }
-
         ctx.save(); ctx.translate(mouseX, mouseY); ctx.rotate(blueprintAngle);
         if (Math.hypot(player.x - mouseX, player.y - mouseY) <= restrictedRadius) { 
             ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'; ctx.strokeStyle = 'red'; ctx.fillRect(-w/2, -h/2, w, h); ctx.lineWidth = 2; ctx.strokeRect(-w/2, -h/2, w, h);
         } else {
-            if (currentBlueprint === 'barricade') { ctx.fillStyle = 'rgba(139, 69, 19, 0.5)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); } 
-            else if (currentBlueprint === 'tar') { ctx.globalAlpha = 0.5; if (ASSETS.tarPit.complete && ASSETS.tarPit.naturalHeight !== 0) ctx.drawImage(ASSETS.tarPit, -w/2, -h/2, w, h); else { ctx.fillStyle = 'rgba(30, 30, 30, 0.5)'; ctx.fillRect(-w/2, -h/2, w, h); } ctx.globalAlpha = 1.0; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.lineWidth = 2; ctx.strokeRect(-w/2, -h/2, w, h); } 
-            else if (currentBlueprint === 'wire') { ctx.fillStyle = 'rgba(150, 150, 150, 0.3)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.setLineDash([5, 5]); ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); }
-            else if (currentBlueprint === 'tesla') { ctx.fillStyle = 'rgba(0, 229, 255, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.stroke(); } ctx.fillStyle='rgba(0, 229, 255, 0.1)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
-            else if (currentBlueprint === 'plague') { ctx.fillStyle = 'rgba(27, 94, 32, 0.7)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.closePath(); ctx.stroke(); } ctx.fillStyle='rgba(27, 94, 32, 0.2)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
-            else if (currentBlueprint === 'soul') { ctx.fillStyle = 'rgba(170, 0, 255, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.closePath(); ctx.stroke(); } ctx.fillStyle='rgba(170, 0, 255, 0.1)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
-            else if (currentBlueprint === 'mending') { ctx.globalAlpha = 0.5; if (ASSETS.mendingWard.complete && ASSETS.mendingWard.naturalHeight !== 0) ctx.drawImage(ASSETS.mendingWard, -15, -45, 30, 60); else { ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; ctx.fillRect(-15, -15, 30, 30); } ctx.globalAlpha = 1.0; if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.lineWidth = 2; ctx.strokeRect(-15, -15, 30, 30); } }
-            else if (currentBlueprint === 'charm') { ctx.fillStyle = 'rgba(41, 182, 246, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.closePath(); ctx.stroke(); } ctx.fillStyle = 'rgba(41, 182, 246, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill(); }
-            else if (currentBlueprint === 'wind') { ctx.fillStyle = 'rgba(176, 190, 197, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.lineWidth=2; ctx.stroke(); } ctx.fillStyle='rgba(176, 190, 197, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill(); }
-            else if (currentBlueprint === 'decoy') { ctx.fillStyle = 'rgba(93, 64, 55, 0.5)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.lineWidth = 2; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); ctx.strokeStyle = 'rgba(93, 64, 55, 0.2)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.stroke(); }
-            else if (currentBlueprint === 'frost') { ctx.fillStyle = 'rgba(129, 212, 250, 0.5)'; ctx.strokeStyle = isPerm ? '#e040fb' : 'white'; ctx.lineWidth = 2; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); }
-            else if (currentBlueprint === 'focus') { ctx.fillStyle = 'rgba(206, 147, 216, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -h/2); ctx.lineTo(w/2, 0); ctx.lineTo(0, h/2); ctx.lineTo(-w/2, 0); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(0, -h/2); ctx.lineTo(w/2, 0); ctx.lineTo(0, h/2); ctx.lineTo(-w/2, 0); ctx.closePath(); ctx.stroke(); } ctx.fillStyle='rgba(206, 147, 216, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill(); }
-            else if (currentBlueprint === 'crucible') { ctx.fillStyle = 'rgba(66, 66, 66, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'rgba(255, 202, 40, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/4, 0, Math.PI*2); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.stroke(); } ctx.fillStyle='rgba(255, 202, 40, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill(); }
-            else if (currentBlueprint === 'meteor') { ctx.fillStyle = 'rgba(255, 112, 67, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); if(isPerm) { ctx.strokeStyle='#e040fb'; ctx.lineWidth=2; ctx.stroke(); } }
+            if (currentBlueprint === 'barricade') { ctx.fillStyle = 'rgba(139, 69, 19, 0.5)'; ctx.strokeStyle = 'white'; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); } 
+            else if (currentBlueprint === 'tar') { ctx.globalAlpha = 0.5; if (ASSETS.tarPit.complete && ASSETS.tarPit.naturalHeight !== 0) ctx.drawImage(ASSETS.tarPit, -w/2, -h/2, w, h); else { ctx.fillStyle = 'rgba(30, 30, 30, 0.5)'; ctx.fillRect(-w/2, -h/2, w, h); } ctx.globalAlpha = 1.0; ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.strokeRect(-w/2, -h/2, w, h); } 
+            else if (currentBlueprint === 'wire') { ctx.fillStyle = 'rgba(150, 150, 150, 0.3)'; ctx.strokeStyle = 'white'; ctx.setLineDash([5, 5]); ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); }
+            else if (currentBlueprint === 'tesla') { ctx.fillStyle = 'rgba(0, 229, 255, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle='rgba(0, 229, 255, 0.1)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
+            else if (currentBlueprint === 'plague') { ctx.fillStyle = 'rgba(27, 94, 32, 0.7)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.fill(); ctx.fillStyle='rgba(27, 94, 32, 0.2)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
+            else if (currentBlueprint === 'soul') { ctx.fillStyle = 'rgba(170, 0, 255, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.fill(); ctx.fillStyle='rgba(170, 0, 255, 0.1)'; ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); }
+            else if (currentBlueprint === 'mending') { ctx.globalAlpha = 0.5; if (ASSETS.mendingWard.complete && ASSETS.mendingWard.naturalHeight !== 0) ctx.drawImage(ASSETS.mendingWard, -15, -45, 30, 60); else { ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; ctx.fillRect(-15, -15, 30, 30); } ctx.globalAlpha = 1.0; }
+            else if (currentBlueprint === 'charm') { ctx.fillStyle = 'rgba(41, 182, 246, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(15, 5); ctx.lineTo(-15, 5); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(15, -5); ctx.lineTo(-15, -5); ctx.fill(); ctx.fillStyle = 'rgba(41, 182, 246, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill(); }
+            else if (currentBlueprint === 'wind') { ctx.fillStyle = 'rgba(176, 190, 197, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle='rgba(176, 190, 197, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill(); }
+            else if (currentBlueprint === 'decoy') { ctx.fillStyle = 'rgba(93, 64, 55, 0.5)'; ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); ctx.strokeStyle = 'rgba(93, 64, 55, 0.2)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.stroke(); }
+            else if (currentBlueprint === 'frost') { ctx.fillStyle = 'rgba(129, 212, 250, 0.5)'; ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); }
+            else if (currentBlueprint === 'focus') { ctx.fillStyle = 'rgba(206, 147, 216, 0.5)'; ctx.beginPath(); ctx.moveTo(0, -h/2); ctx.lineTo(w/2, 0); ctx.lineTo(0, h/2); ctx.lineTo(-w/2, 0); ctx.fill(); ctx.fillStyle='rgba(206, 147, 216, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill(); }
+            else if (currentBlueprint === 'crucible') { ctx.fillStyle = 'rgba(66, 66, 66, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'rgba(255, 202, 40, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/4, 0, Math.PI*2); ctx.fill(); ctx.fillStyle='rgba(255, 202, 40, 0.1)'; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.fill(); }
+            else if (currentBlueprint === 'meteor') { ctx.fillStyle = 'rgba(255, 112, 67, 0.5)'; ctx.beginPath(); ctx.arc(0, 0, w/2, 0, Math.PI*2); ctx.fill(); }
         }
         ctx.restore();
-    } else if (!isPaused && isGameStarted && !isPlacingPerms) {
+    } else if (!isPaused && isGameStarted) {
         const cannotShoot = Math.hypot(player.x - mouseX, player.y - mouseY) <= restrictedRadius || currentAmmo <= 0; 
         let localBlastRadius = maxBlastRadius;
         structures.forEach(s => { if (s.type === 'focus' && Math.hypot(mouseX - s.x, mouseY - s.y) <= s.radius) localBlastRadius *= 1.5 * refractingLensRad; });
