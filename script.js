@@ -8,6 +8,9 @@ ctx.imageSmoothingEnabled = false;
 const ASSETS = {
     playerTower: new Image(),
     zombie: new Image(),
+    swarmer: new Image(),
+    brute: new Image(),
+    ranged: new Image(),
     zombiePoisoned: new Image(),
     zombieCharmed: new Image(),
     poisonBubbles: new Image(),
@@ -19,6 +22,9 @@ const ASSETS = {
 
 ASSETS.playerTower.src = 'artwork/tower.png';
 ASSETS.zombie.src = 'artwork/zombie.png';
+ASSETS.swarmer.src = 'artwork/swarmer.png';
+ASSETS.brute.src = 'artwork/brute.png';
+ASSETS.ranged.src = 'artwork/ranged.png';
 ASSETS.zombiePoisoned.src = 'artwork/zombie_poisoned.png';
 ASSETS.zombieCharmed.src = 'artwork/zombie_charmed.png';
 ASSETS.poisonBubbles.src = 'artwork/bubbles.png';
@@ -814,7 +820,7 @@ function spawnWave() {
                 if (i === 0) groupSize = Math.floor(groupSize * 1.5); 
             } else if (waveTypeRoll < 0.4 && level > 3) {
                 // BRUTES: Slow, tanky, large
-                eType = 'brute'; speed *= 0.6; hp *= 3; radius = 25;
+                eType = 'brute'; speed *= 0.6; hp *= 2; radius = 20;
                 if (i === 0) groupSize = Math.max(1, Math.floor(groupSize / 2));
             } else if (waveTypeRoll < 0.6 && level > 4) {
                 // RANGED: Skeletons that shoot
@@ -851,10 +857,26 @@ function distToSegmentSquared(p, v, w) {
     return (p.x - (v.x + t * (w.x - v.x)))**2 + (p.y - (v.y + t * (w.y - v.y)))**2;
 }
 
+function hasUniqueEnemySprite(enemy) {
+    return enemy.type === 'swarmer' || enemy.type === 'brute' || enemy.type === 'ranged';
+}
+
+function getEnemyBaseSprite(enemy) {
+    if (enemy.isBoss) return ASSETS.boss;
+    if (enemy.type === 'swarmer') return ASSETS.swarmer;
+    if (enemy.type === 'brute') return ASSETS.brute;
+    if (enemy.type === 'ranged') return ASSETS.ranged;
+    return ASSETS.zombie;
+}
+
 function getEnemySprite(enemy) {
-    if (enemy.charmed) return ASSETS.zombieCharmed;
-    if (enemy.poisoned) return enemy.isBoss ? ASSETS.bossPoisoned : ASSETS.zombiePoisoned;
-    return enemy.isBoss ? ASSETS.boss : ASSETS.zombie;
+    if (enemy.charmed) return hasUniqueEnemySprite(enemy) ? getEnemyBaseSprite(enemy) : ASSETS.zombieCharmed;
+    if (enemy.poisoned) {
+        if (enemy.isBoss) return ASSETS.bossPoisoned;
+        if (hasUniqueEnemySprite(enemy)) return getEnemyBaseSprite(enemy);
+        return ASSETS.zombiePoisoned;
+    }
+    return getEnemyBaseSprite(enemy);
 }
 
 function getEnemyDrawBox(enemy, size) {
@@ -977,11 +999,28 @@ function drawEnemyPoisonBubbles(box) {
     ctx.drawImage(ASSETS.poisonBubbles, sourceX, 0, frameWidth, ASSETS.poisonBubbles.height, box.x, box.y, box.w, box.h);
 }
 
+function drawEnemyCharmedAura(enemy, size) {
+    if (!enemy.charmed || !hasUniqueEnemySprite(enemy)) return;
+
+    ctx.strokeStyle = 'rgba(41, 182, 246, 0.55)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(0, size * 0.02, size * 0.36, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(225, 245, 254, 0.95)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, size * 0.02, size * 0.30, 0, Math.PI * 2);
+    ctx.stroke();
+}
+
 function drawEnemy(enemy) {
     const size = enemy.radius * 3;
     const box = getEnemyDrawBox(enemy, size);
     const sprite = getEnemySprite(enemy);
     const hasSprite = sprite.complete && sprite.naturalHeight !== 0;
+    const useUniqueSpriteArt = hasSprite && hasUniqueEnemySprite(enemy);
     const statusPad = enemy.type === 'brute' ? size * 0.12 : size * 0.06;
     const healthRatio = Math.max(0, enemy.hp / enemy.maxHp);
 
@@ -996,12 +1035,14 @@ function drawEnemy(enemy) {
         ctx.fillRect(box.x - statusPad, box.y - statusPad, box.w + statusPad * 2, box.h + statusPad * 2);
     }
 
-    drawEnemyVariantBackdrop(enemy, size);
+    if (!useUniqueSpriteArt) drawEnemyVariantBackdrop(enemy, size);
 
     if (hasSprite) ctx.drawImage(sprite, box.x, box.y, box.w, box.h);
     else drawFallbackEnemy(box, enemy);
 
-    drawEnemyVariantOverlay(enemy, size);
+    drawEnemyCharmedAura(enemy, size);
+
+    if (!useUniqueSpriteArt) drawEnemyVariantOverlay(enemy, size);
 
     if (enemy.poisoned && !enemy.charmed) drawEnemyPoisonBubbles(box);
 
