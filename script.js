@@ -319,11 +319,64 @@ let weatherState = 'none'; // 'none', 'fading_in', 'active'
 let weatherTimer = 0;
 let weatherAlpha = 0; // For visual fade-ins
 let lastLightningStrike = 0;
+let weatherStartTimeout = null;
 let lastRechargeTime = 0;
 const restrictedRadius = 120; 
 
 let spawnTimer, mouseX = logicalWidth / 2, mouseY = logicalHeight / 2;
 const player = { x: logicalWidth / 2, y: logicalHeight / 2 };
+
+const SUNNY_WEATHER = {
+    name: 'Sunny',
+    duration: 0,
+    color: '#4fc3f7',
+    enemySpeedMult: 1,
+    rechargeMult: 1,
+    spawnDelayMult: 1,
+    xpMult: 1,
+    goldMult: 1,
+    visibilityRadiusMult: 1
+};
+
+const WEATHER_TYPES = {
+    'Acid Rain': { name: 'Acid Rain', duration: 45000, color: '#76ff03', enemySpeedMult: 1, rechargeMult: 1, spawnDelayMult: 1, xpMult: 1, goldMult: 1, visibilityRadiusMult: 1 },
+    Heatwave: { name: 'Heatwave', duration: 30000, color: '#ff7043', enemySpeedMult: 1, rechargeMult: 1, spawnDelayMult: 1, xpMult: 1, goldMult: 1, visibilityRadiusMult: 1 },
+    Thunderstorm: { name: 'Thunderstorm', duration: 60000, color: '#9fa8da', enemySpeedMult: 1, rechargeMult: 1, spawnDelayMult: 1, xpMult: 1, goldMult: 1, visibilityRadiusMult: 1 },
+    'Thick Fog': { name: 'Thick Fog', duration: 45000, color: '#cfd8dc', enemySpeedMult: 1, rechargeMult: 1, spawnDelayMult: 1, xpMult: 1, goldMult: 1, visibilityRadiusMult: 0.5 },
+    Blizzard: { name: 'Blizzard', duration: 45000, color: '#b3e5fc', enemySpeedMult: 0.65, rechargeMult: 1.75, spawnDelayMult: 1, xpMult: 1, goldMult: 1, visibilityRadiusMult: 1 },
+    'Blood Moon': { name: 'Blood Moon', duration: 45000, color: '#ef5350', enemySpeedMult: 1, rechargeMult: 1, spawnDelayMult: 0.5, xpMult: 2, goldMult: 2, visibilityRadiusMult: 1 }
+};
+
+function getWeatherConfig(name = currentWeather) {
+    return WEATHER_TYPES[name] || SUNNY_WEATHER;
+}
+
+function getActiveWeatherConfig() {
+    return weatherState === 'active' ? getWeatherConfig(currentWeather) : SUNNY_WEATHER;
+}
+
+function updateWeatherDisplay(name) {
+    const display = document.getElementById('weatherDisplay');
+    const weather = name === 'Sunny' ? SUNNY_WEATHER : getWeatherConfig(name);
+    display.innerText = name;
+    display.style.color = weather.color;
+}
+
+function clearWeatherStartTimeout() {
+    if (weatherStartTimeout !== null) {
+        clearTimeout(weatherStartTimeout);
+        weatherStartTimeout = null;
+    }
+}
+
+function resetWeather(updateDisplay = true) {
+    clearWeatherStartTimeout();
+    currentWeather = 'Sunny';
+    weatherState = 'none';
+    weatherTimer = 0;
+    weatherAlpha = 0;
+    if (updateDisplay) updateWeatherDisplay('Sunny');
+}
 
 function applyUpgrades() {
     let u = savedData.upgrades;
@@ -551,6 +604,7 @@ function startGame() {
     mainMenu.style.display = 'none'; 
     isGameStarted = true;
     structures.length = 0; levelUpsQueued = 0;
+    resetWeather();
     startActualRun();
 }
 
@@ -564,30 +618,76 @@ function startActualRun() {
     // --- GENERATE HAZARDS ---
     hazards.length = 0;
     
-    // Pools (0 to 3)
-    const numPools = Math.floor(Math.random() * 4); 
+    // Helper function to check if a new hazard overlaps with existing ones or the tower
+    function isValidSpawn(testX, testY, testRadius) {
+        // 1. Don't spawn inside the player's restricted building zone
+        if (Math.hypot(player.x - testX, player.y - testY) < restrictedRadius + testRadius + 20) {
+            return false;
+        }
+
+        // 2. Don't spawn on top of another hazard
+        for (let h of hazards) {
+            // If the distance between them is less than their combined radiuses + 15px padding, it's an overlap
+            if (Math.hypot(testX - h.x, testY - h.y) < testRadius + h.radius + 15) {
+                return false; 
+            }
+        }
+        
+        return true; // The spot is clear!
+    }
+    
+    // Pools (0 to 5)
+    const numPools = Math.floor(Math.random() * 6); 
     for(let i = 0; i < numPools; i++) {
-        let r = 200 + Math.random() * (Math.min(logicalWidth, logicalHeight) / 2 - 100);
-        let angle = Math.random() * Math.PI * 2;
-        hazards.push({
-            type: Math.random() < 0.5 ? 'lake' : 'magma',
-            x: player.x + Math.cos(angle) * r, 
-            y: player.y + Math.sin(angle) * r, 
-            radius: 45, dryUntil: 0
-        });
+        let attempts = 0;
+        let placed = false;
+        let radius = 125; // Our new, larger size
+
+        // Try up to 50 times to find a valid spot to prevent the game from freezing
+        while (attempts < 50 && !placed) {
+            let r = 200 + Math.random() * (Math.min(logicalWidth, logicalHeight) / 2 - 100);
+            let angle = Math.random() * Math.PI * 2;
+            let hx = player.x + Math.cos(angle) * r;
+            let hy = player.y + Math.sin(angle) * r;
+
+            if (isValidSpawn(hx, hy, radius)) {
+                hazards.push({
+                    type: Math.random() < 0.5 ? 'lake' : 'magma',
+                    x: hx, 
+                    y: hy, 
+                    radius: radius, 
+                    dryUntil: 0
+                });
+                placed = true; // Successfully placed, break the while loop
+            }
+            attempts++;
+        }
     }
 
-    // Obstacles (0 to 5)
-    const numObstacles = Math.floor(Math.random() * 6); 
+    // Obstacles (0 to 7)
+    const numObstacles = Math.floor(Math.random() * 8); 
     for(let i = 0; i < numObstacles; i++) {
-        let r = 250 + Math.random() * (Math.min(logicalWidth, logicalHeight) / 2 - 100);
-        let angle = Math.random() * Math.PI * 2;
-        hazards.push({
-            type: Math.random() < 0.5 ? 'rock' : 'thornbush',
-            x: player.x + Math.cos(angle) * r, 
-            y: player.y + Math.sin(angle) * r, 
-            radius: 25, hp: 200, maxHp: 200
-        });
+        let attempts = 0;
+        let placed = false;
+        let radius = 75; // Our new, larger size
+
+        while (attempts < 50 && !placed) {
+            let r = 250 + Math.random() * (Math.min(logicalWidth, logicalHeight) / 2 - 100);
+            let angle = Math.random() * Math.PI * 2;
+            let hx = player.x + Math.cos(angle) * r;
+            let hy = player.y + Math.sin(angle) * r;
+
+            if (isValidSpawn(hx, hy, radius)) {
+                hazards.push({
+                    type: Math.random() < 0.5 ? 'rock' : 'thornbush',
+                    x: hx, 
+                    y: hy, 
+                    radius: radius
+                });
+                placed = true;
+            }
+            attempts++;
+        }
     }
 
     if (levelUpsQueued === 0 && !isPaused) spawnWave();
@@ -608,6 +708,7 @@ function resetGame() {
     
     isGameStarted = false; isPaused = false; currentBlueprint = null; controlsTip.style.display = 'none';
     bossesKilled = 0; crystalsSpawned = false; victoryAchieved = false; crystals.length = 0; levelUpsQueued = 0;
+    resetWeather();
     
     survivalTimeMs = 0; formattedTime = "00:00"; timerDisplay.innerText = formattedTime;
     xp = 0; lastBossLevel = 0; killCount = 0; runGold = 0;
@@ -633,6 +734,7 @@ function togglePauseMenu() {
 
 function triggerGameOver() {
     isGameStarted = false; clearTimeout(spawnTimer);
+    resetWeather();
     let diff = Date.now() - lastPlaytimeSave;
     savedData.unclaimedPlaytime += diff; savedData.totalPlaytime += diff; savedData.totalDeaths += 1;
     saveGame(); updateGoldUI(); updatePrestigeUI();
@@ -825,7 +927,7 @@ function spawnWave() {
     const minSpawn = Math.max(1000, 3000 - lureSpawnReduction); 
     const maxSpawn = Math.max(2000, 7000 - lureSpawnReduction);
     const delayMult = Math.max(0.2, 1 - bloodReckoningReduction); 
-    const nextSpawnDelay = (Math.random() * (maxSpawn - minSpawn) + minSpawn) * delayMult;
+    const nextSpawnDelay = (Math.random() * (maxSpawn - minSpawn) + minSpawn) * delayMult * getActiveWeatherConfig().spawnDelayMult;
     
     if (level % bossLevelThreshold === 0 && lastBossLevel !== level) { 
         lastBossLevel = level; 
@@ -1118,7 +1220,8 @@ function animate() {
         }
 
         if (survivalTimeMs >= nextBossTime) { nextBossTime += (300000 - bossTimerReduction); spawnBossEnemy(); }
-        if (currentAmmo < maxAmmo && currentFrameTime - lastRechargeTime >= rechargeRate) { currentAmmo++; lastRechargeTime += rechargeRate; updateAmmoUI(); }
+        const activeRechargeRate = rechargeRate * getActiveWeatherConfig().rechargeMult;
+        if (currentAmmo < maxAmmo && currentFrameTime - lastRechargeTime >= activeRechargeRate) { currentAmmo++; lastRechargeTime += activeRechargeRate; updateAmmoUI(); }
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.save(); ctx.scale(gameScale, gameScale);
@@ -1126,7 +1229,6 @@ function animate() {
     // Draw hazards first so they sit below structures
     for (let i = hazards.length - 1; i >= 0; i--) {
         let h = hazards[i];
-        if (h.type === 'thornbush' && h.hp <= 0) { hazards.splice(i, 1); continue; }
 
         ctx.save(); ctx.translate(h.x, h.y);
         if (h.type === 'lake') {
@@ -1275,17 +1377,6 @@ function animate() {
                     structures.forEach(s => { if (s.type === 'wind' && Math.hypot(gx - s.x, gy - s.y) <= s.radius && !spell.zephyrBoosted) { spell.damageBonus += Math.floor(spellDamageBonus * (zephyrsBlessingDmg - 1)); spell.zephyrBoosted = true; spell.progress = 1; } });
                 }
 
-                // Check spell interception by rocks
-                for (let h of hazards) {
-                    if (h.type === 'rock') {
-                        if (Math.hypot(gx - h.x, gy - h.y) <= h.radius) {
-                            spell.progress = 1; 
-                            spell.targetX = h.x; spell.targetY = h.y; 
-                            break; 
-                        }
-                    }
-                }
-
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; ctx.beginPath(); ctx.ellipse(gx, gy, 15, 7, 0, 0, Math.PI * 2); ctx.fill();
                 ctx.fillStyle = '#ff4500'; ctx.beginPath(); ctx.arc(gx, ay, 12, 0, Math.PI * 2); ctx.fill();
 
@@ -1376,12 +1467,17 @@ function animate() {
 
             if (e.dead) {
                 killCount++;
+                const weatherGoldMult = getActiveWeatherConfig().goldMult;
                 if (e.isBoss) { 
-                    savedData.gold += 2 + bossGoldBonus + bountyHunterBonus; runGold += 2 + bossGoldBonus + bountyHunterBonus; saveGame(); updateGoldUI(); bossesKilled++; 
+                    const bossGoldGain = Math.max(1, Math.round((2 + bossGoldBonus + bountyHunterBonus) * weatherGoldMult));
+                    savedData.gold += bossGoldGain; runGold += bossGoldGain; saveGame(); updateGoldUI(); bossesKilled++; 
                     triggerRandomWeather(); 
                     if (bossesKilled === 10 && !crystalsSpawned) { crystalsSpawned = true; spawnCrystals(1); } else if (bossesKilled === 15 && !crystalsSpawned && savedData.prestigeUpgrades.trueEnding > 0) { crystalsSpawned = true; spawnCrystals(2); }
                 } 
-                else if (killCount % goldDropThreshold === 0) { savedData.gold += 1; runGold += 1; saveGame(); updateGoldUI(); }
+                else if (killCount % goldDropThreshold === 0) {
+                    const goldDropGain = Math.max(1, Math.round(weatherGoldMult));
+                    savedData.gold += goldDropGain; runGold += goldDropGain; saveGame(); updateGoldUI();
+                }
 
                 if (currentFrameTime - e.lastTeslaHit < 500 && voltaicFeedbackZaps > 0) {
                     let nearby = enemies.filter(o => !o.dead && !o.charmed && Math.hypot(o.x - e.x, o.y - e.y) <= 150);
@@ -1409,7 +1505,8 @@ function animate() {
                 if (inCrucible) {
                     let goldChance = 0.01 + (transmutationLevel * 0.005) + (Math.floor(savedData.gold / 10) * greedsRewardScale);
                     if (Math.random() < goldChance) {
-                        savedData.gold++; runGold++; if (philosophersStoneActive && health < maxHealth) { health++; updateHealthUI(); } saveGame(); updateGoldUI();
+                        const crucibleGoldGain = Math.max(1, Math.round(weatherGoldMult));
+                        savedData.gold += crucibleGoldGain; runGold += crucibleGoldGain; if (philosophersStoneActive && health < maxHealth) { health++; updateHealthUI(); } saveGame(); updateGoldUI();
                     } else if (foolsGoldChance > 0 && Math.random() < foolsGoldChance) {
                         currentAmmo = Math.min(maxAmmo, currentAmmo + 1); updateAmmoUI();
                     }
@@ -1433,6 +1530,7 @@ function animate() {
                     }
                 }
 
+                finalXp = Math.floor(finalXp * getActiveWeatherConfig().xpMult);
                 addXp(finalXp); enemies.splice(i, 1); continue; 
             }
 
@@ -1449,19 +1547,20 @@ function animate() {
                 if (closestEnemy) { targetAngle = Math.atan2(closestEnemy.y - e.y, closestEnemy.x - e.x); if (closestDist < e.radius + closestEnemy.radius + 2) { closestEnemy.hp -= (2 * zealousConvertsDmg * (1 + frenziedThrallsBonus)); e.hp -= 1; if (closestEnemy.hp <= 0) closestEnemy.dead = true; if (e.hp <= 0) e.dead = true; } } else { targetAngle = Math.atan2(e.y - player.y, e.x - player.x); }
             } else {
                 
-                // Hazard Blockers for Zombies
+                // Hazard Interactions for Zombies
+                e.hidden = false; // Assume they are visible by default every frame
+                
                 hazards.forEach(h => {
-                    if (h.type === 'rock' || h.type === 'thornbush') {
-                        const dist = Math.hypot(e.x - h.x, e.y - h.y);
-                        if (dist < e.radius + h.radius) {
-                            let overlap = (e.radius + h.radius) - dist;
-                            let nx = (e.x - h.x) / dist; let ny = (e.y - h.y) / dist;
-                            e.x += nx * overlap; e.y += ny * overlap;
-                            if (h.type === 'thornbush') {
-                                h.hp -= (e.isBoss ? 2.5 : 0.5);
-                                e.hp -= 0.1; // Passive damage
-                                if (e.hp <= 0) e.dead = true;
-                            }
+                    const dist = Math.hypot(e.x - h.x, e.y - h.y);
+                    if (dist < e.radius + h.radius) {
+                        if (h.type === 'rock') {
+                            // If they are touching a rock, turn them invisible
+                            e.hidden = true; 
+                        } else if (h.type === 'thornbush') {
+                            // Thornbush passive damage
+                            h.hp -= (e.isBoss ? 2.5 : 0.5);
+                            e.hp -= 0.1; 
+                            if (e.hp <= 0) e.dead = true;
                         }
                     }
                 });
@@ -1514,7 +1613,7 @@ function animate() {
                 }
             }
 
-            if (currentWeather === 'Heatwave' && e.inTar) {
+            if (weatherState === 'active' && currentWeather === 'Heatwave' && e.inTar) {
                 speedModifier /= tarSpeedMod;
                 e.hp -= 1; 
                 if (e.hp <= 0) e.dead = true;
@@ -1535,6 +1634,7 @@ function animate() {
             if (e.splinterSlow > 0) { e.splinterSlow -= deltaTime; speedModifier *= 0.7; }
             if (e.updraftSlow > 0) { e.updraftSlow -= deltaTime; speedModifier *= (1 - updraftSlow); }
             if (!e.inTar && e.stickySlow > 0) { e.stickySlow -= deltaTime; speedModifier *= (1 - stickyResidueSlow); }
+            speedModifier *= getActiveWeatherConfig().enemySpeedMult;
 
             const distToTower = Math.hypot(player.x - e.x, player.y - e.y);
             if (e.type === 'ranged' && !e.charmed && distToTower <= e.attackRange) {
@@ -1567,7 +1667,10 @@ function animate() {
 
     if (isGameStarted) {
         for (let i = enemies.length - 1; i >= 0; i--) {
-            if (!enemies[i].dead) drawEnemy(enemies[i]);
+            // Only draw the enemy if they are NOT dead and NOT hidden
+            if (!enemies[i].dead && !enemies[i].hidden) {
+                drawEnemy(enemies[i]);
+            }
         }
 
         enemyProjectiles.forEach(projectile => {
@@ -1653,11 +1756,8 @@ function animate() {
 }
 
 function triggerRandomWeather() {
-    const storms = [
-        { name: 'Acid Rain', duration: 45000, color: '#76ff03' },
-        { name: 'Heatwave', duration: 30000, color: '#ff7043' },
-        { name: 'Thunderstorm', duration: 60000, color: '#9fa8da' }
-    ];
+    clearWeatherStartTimeout();
+    const storms = Object.values(WEATHER_TYPES);
     const storm = storms[Math.floor(Math.random() * storms.length)];
     
     currentWeather = storm.name;
@@ -1670,11 +1770,12 @@ function triggerRandomWeather() {
     display.style.color = "#aaa";
 
     // Schedule the actual storm to start
-    setTimeout(() => {
+    weatherStartTimeout = setTimeout(() => {
+        if (!isGameStarted || currentWeather !== storm.name || weatherState !== 'fading_in') return;
         weatherState = 'active';
         weatherTimer = Date.now() + storm.duration;
-        display.innerText = storm.name;
-        display.style.color = storm.color;
+        updateWeatherDisplay(storm.name);
+        weatherStartTimeout = null;
     }, 10000);
 }
 
@@ -1689,10 +1790,8 @@ function updateAndDrawWeather(ctx, currentFrameTime) {
     } else if (weatherState === 'active') {
         weatherAlpha = 0.5;
         if (currentFrameTime > weatherTimer) {
-            weatherState = 'none';
-            currentWeather = 'Sunny';
-            document.getElementById('weatherDisplay').innerText = "Sunny";
-            document.getElementById('weatherDisplay').style.color = "#4fc3f7";
+            resetWeather();
+            return;
         }
     }
 
@@ -1746,6 +1845,56 @@ function updateAndDrawWeather(ctx, currentFrameTime) {
                 visualEffects.push({ type: 'lightning', x1: player.x, y1: 0, x2: player.x, y2: player.y, expires: currentFrameTime + 200 });
             }
         }
+    } else if (currentWeather === 'Thick Fog') {
+        ctx.fillStyle = '#cfd8dc';
+        ctx.fillRect(0, 0, weatherWidth, weatherHeight);
+
+        ctx.fillStyle = 'rgba(236, 239, 241, 0.18)';
+        for (let i = 0; i < 24; i++) {
+            const x = (currentFrameTime * 0.01 + i * 130) % (weatherWidth + 220) - 110;
+            const y = (i * 75 + Math.sin(currentFrameTime * 0.0015 + i) * 45 + weatherHeight * 0.15) % (weatherHeight + 160) - 80;
+            ctx.beginPath();
+            ctx.ellipse(x, y, 120, 55, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        const visibilityRadius = Math.min(weatherWidth, weatherHeight) * 0.5 * getWeatherConfig('Thick Fog').visibilityRadiusMult;
+        const fogGap = ctx.createRadialGradient(player.x, player.y, visibilityRadius * 0.35, player.x, player.y, visibilityRadius);
+        fogGap.addColorStop(0, 'rgba(0, 0, 0, 1)');
+        fogGap.addColorStop(0.7, 'rgba(0, 0, 0, 0.85)');
+        fogGap.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = fogGap;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, visibilityRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+    } else if (currentWeather === 'Blizzard') {
+        ctx.fillStyle = '#90caf9';
+        ctx.fillRect(0, 0, weatherWidth, weatherHeight);
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < 170; i++) {
+            const x = (Math.random() * weatherWidth + currentFrameTime * 0.18 + i * 11) % (weatherWidth + 80) - 40;
+            const y = (Math.random() * weatherHeight + currentFrameTime * 0.10 + i * 17) % (weatherHeight + 80) - 40;
+            ctx.moveTo(x, y);
+            ctx.lineTo(x - 12, y + 18);
+        }
+        ctx.stroke();
+    } else if (currentWeather === 'Blood Moon') {
+        ctx.fillStyle = '#5f0f16';
+        ctx.fillRect(0, 0, weatherWidth, weatherHeight);
+
+        const pulse = 0.18 + Math.sin(currentFrameTime * 0.004) * 0.06;
+        ctx.fillStyle = `rgba(255, 82, 82, ${pulse})`;
+        ctx.fillRect(0, 0, weatherWidth, weatherHeight);
+
+        ctx.fillStyle = 'rgba(255, 205, 210, 0.22)';
+        ctx.beginPath();
+        ctx.arc(weatherWidth - 140, 120, 65, 0, Math.PI * 2);
+        ctx.fill();
     }
     ctx.restore();
 }
