@@ -312,6 +312,7 @@ const crystals = [];
 
 let currentBlueprint = null, blueprintAngle = 0;
 const structures = [], spells = [], enemies = [], visualEffects = []; 
+const hazards = [];
 const enemyProjectiles = [];
 let currentWeather = 'Sunny';
 let weatherState = 'none'; // 'none', 'fading_in', 'active'
@@ -559,6 +560,36 @@ function startActualRun() {
     
     if (goldenEpochBonus > 0) { savedData.gold += goldenEpochBonus; runGold += goldenEpochBonus; saveGame(); updateGoldUI(); }
     if (echoesOfPowerXP > 0) { addXp(echoesOfPowerXP); }
+
+    // --- GENERATE HAZARDS ---
+    hazards.length = 0;
+    
+    // Pools (0 to 3)
+    const numPools = Math.floor(Math.random() * 4); 
+    for(let i = 0; i < numPools; i++) {
+        let r = 200 + Math.random() * (Math.min(logicalWidth, logicalHeight) / 2 - 100);
+        let angle = Math.random() * Math.PI * 2;
+        hazards.push({
+            type: Math.random() < 0.5 ? 'lake' : 'magma',
+            x: player.x + Math.cos(angle) * r, 
+            y: player.y + Math.sin(angle) * r, 
+            radius: 45, dryUntil: 0
+        });
+    }
+
+    // Obstacles (0 to 5)
+    const numObstacles = Math.floor(Math.random() * 6); 
+    for(let i = 0; i < numObstacles; i++) {
+        let r = 250 + Math.random() * (Math.min(logicalWidth, logicalHeight) / 2 - 100);
+        let angle = Math.random() * Math.PI * 2;
+        hazards.push({
+            type: Math.random() < 0.5 ? 'rock' : 'thornbush',
+            x: player.x + Math.cos(angle) * r, 
+            y: player.y + Math.sin(angle) * r, 
+            radius: 25, hp: 200, maxHp: 200
+        });
+    }
+
     if (levelUpsQueued === 0 && !isPaused) spawnWave();
 }
 
@@ -580,7 +611,7 @@ function resetGame() {
     
     survivalTimeMs = 0; formattedTime = "00:00"; timerDisplay.innerText = formattedTime;
     xp = 0; lastBossLevel = 0; killCount = 0; runGold = 0;
-    enemies.length = 0; spells.length = 0; structures.length = 0; visualEffects.length = 0;
+    enemies.length = 0; spells.length = 0; structures.length = 0; visualEffects.length = 0; hazards.length = 0;
     
     applyUpgrades(); nextBossTime = 300000 - bossTimerReduction;
     xpBarFill.style.width = '0%'; xpText.innerHTML = `${xp} / ${xpToNextLevel}`;
@@ -681,6 +712,7 @@ window.addEventListener('resize', () => {
     player.x = logicalWidth / 2; player.y = logicalHeight / 2;
     structures.forEach(s => { s.x += diffX; s.y += diffY; });
     enemies.forEach(e => { e.x += diffX; e.y += diffY; }); crystals.forEach(c => { c.x += diffX; c.y += diffY; });
+    hazards.forEach(h => { h.x += diffX; h.y += diffY; });
     spells.forEach(s => { s.startX += diffX; s.startY += diffY; s.targetX += diffX; s.targetY += diffY; });
     visualEffects.forEach(v => {
         if (v.x !== undefined) v.x += diffX; if (v.y !== undefined) v.y += diffY;
@@ -695,6 +727,14 @@ window.addEventListener('click', (event) => {
 
     if (currentBlueprint) {
         if (distFromTower <= restrictedRadius) return; 
+
+        // Block placing traps on hazards
+        let canPlace = true;
+        for (let h of hazards) {
+            if (Math.hypot(clickX - h.x, clickY - h.y) <= h.radius + 15) { canPlace = false; break; }
+        }
+        if (!canPlace) return;
+
         let w = 40, h = 40, hp = 100 + wardHPBonus, radius = 0;
         if (currentBlueprint === 'barricade') { w = 80; h = 20; hp = barricadeHP; } 
         else if (currentBlueprint === 'tar') { w = 120; h = 120; }
@@ -713,7 +753,6 @@ window.addEventListener('click', (event) => {
 
         structures.push({ type: currentBlueprint, x: clickX, y: clickY, w: w, h: h, angle: blueprintAngle, hp: hp, radius: radius, hitZombies: new Map(), lastTick: Date.now() });
 
-        // Harvest Surge Check
         if (currentBlueprint === 'soul' && harvestSurgeXp > 0) { addXp(harvestSurgeXp); }
 
         currentBlueprint = null; controlsTip.style.display = 'none';
@@ -722,6 +761,11 @@ window.addEventListener('click', (event) => {
     }
 
     if (currentAmmo <= 0 || distFromTower <= restrictedRadius) return; 
+
+    // Prevent shooting into magma
+    for (let h of hazards) {
+        if (h.type === 'magma' && Math.hypot(clickX - h.x, clickY - h.y) <= h.radius) return;
+    }
 
     if (currentAmmo === maxAmmo) lastRechargeTime = Date.now();
     currentAmmo--; updateAmmoUI();
@@ -1078,6 +1122,28 @@ function animate() {
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.save(); ctx.scale(gameScale, gameScale);
+    
+    // Draw hazards first so they sit below structures
+    for (let i = hazards.length - 1; i >= 0; i--) {
+        let h = hazards[i];
+        if (h.type === 'thornbush' && h.hp <= 0) { hazards.splice(i, 1); continue; }
+
+        ctx.save(); ctx.translate(h.x, h.y);
+        if (h.type === 'lake') {
+            if (currentFrameTime > h.dryUntil) { ctx.fillStyle = 'rgba(33, 150, 243, 0.4)'; } // Water
+            else { ctx.fillStyle = 'rgba(121, 85, 72, 0.3)'; } // Dried Earth
+            ctx.beginPath(); ctx.arc(0, 0, h.radius, 0, Math.PI*2); ctx.fill();
+        } else if (h.type === 'magma') {
+            ctx.fillStyle = 'rgba(255, 87, 34, 0.6)'; ctx.beginPath(); ctx.arc(0, 0, h.radius, 0, Math.PI*2); ctx.fill();
+        } else if (h.type === 'rock') {
+            ctx.fillStyle = '#757575'; ctx.beginPath(); ctx.arc(0, 0, h.radius, 0, Math.PI*2); ctx.fill();
+        } else if (h.type === 'thornbush') {
+            ctx.fillStyle = '#2e7d32'; ctx.beginPath(); ctx.arc(0, 0, h.radius, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#1b5e20'; ctx.lineWidth = 2; ctx.stroke();
+        }
+        ctx.restore();
+    }
+
     ctx.beginPath(); ctx.arc(player.x, player.y, restrictedRadius, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255, 0, 0, 0.05)'; ctx.fill(); ctx.strokeStyle = 'rgba(255, 0, 0, 0.4)'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]); 
 
     // --- STRUCTURE LOGIC ---
@@ -1209,12 +1275,46 @@ function animate() {
                     structures.forEach(s => { if (s.type === 'wind' && Math.hypot(gx - s.x, gy - s.y) <= s.radius && !spell.zephyrBoosted) { spell.damageBonus += Math.floor(spellDamageBonus * (zephyrsBlessingDmg - 1)); spell.zephyrBoosted = true; spell.progress = 1; } });
                 }
 
+                // Check spell interception by rocks
+                for (let h of hazards) {
+                    if (h.type === 'rock') {
+                        if (Math.hypot(gx - h.x, gy - h.y) <= h.radius) {
+                            spell.progress = 1; 
+                            spell.targetX = h.x; spell.targetY = h.y; 
+                            break; 
+                        }
+                    }
+                }
+
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; ctx.beginPath(); ctx.ellipse(gx, gy, 15, 7, 0, 0, Math.PI * 2); ctx.fill();
                 ctx.fillStyle = '#ff4500'; ctx.beginPath(); ctx.arc(gx, ay, 12, 0, Math.PI * 2); ctx.fill();
 
                 if (spell.progress >= 1) spell.state = 'exploding';
             } else if (spell.state === 'exploding') {
                 spell.radius += 4; 
+                
+                // Hazard Interactions
+                for (let h of hazards) {
+                    if (h.type === 'lake' && currentFrameTime > h.dryUntil) {
+                        if (Math.hypot(spell.targetX - h.x, spell.targetY - h.y) < spell.radius + h.radius) {
+                            h.dryUntil = currentFrameTime + 5000;
+                            visualEffects.push({ type: 'explosion', x: h.x, y: h.y, radius: h.radius * 2, expires: currentFrameTime + 400, color: 'rgba(255, 255, 255, 0.8)' });
+                            enemies.forEach(e => {
+                                if (Math.hypot(e.x - h.x, e.y - h.y) <= h.radius * 2) {
+                                    e.hp -= 50;
+                                    let ang = Math.atan2(e.y - h.y, e.x - h.x);
+                                    e.x += Math.cos(ang) * 50; e.y += Math.sin(ang) * 50;
+                                    if (e.hp <= 0) e.dead = true;
+                                }
+                            });
+                        }
+                    } else if (h.type === 'thornbush') {
+                        if (Math.hypot(spell.targetX - h.x, spell.targetY - h.y) < spell.radius + h.radius) {
+                            h.hp -= spell.damageBonus + 10;
+                        }
+                    }
+                }
+
                 if (flammablePitchDuration > 0) { structures.forEach(s => { if (s.type === 'tar' && Math.hypot(spell.targetX - s.x, spell.targetY - s.y) <= spell.radius + s.w/2) s.onFire = currentFrameTime + flammablePitchDuration; }); }
                 if (conduitStrikeBounces > 0) { structures.forEach(s => { if (s.type === 'tesla' && Math.hypot(spell.targetX - s.x, spell.targetY - s.y) <= spell.radius + s.w/2 && !spell.triggeredTesla) { spell.triggeredTesla = true; let inRange = enemies.filter(e => !e.charmed && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius); if (inRange.length > 0) { inRange.sort(() => Math.random() - 0.5); const zapCount = Math.min(conduitStrikeBounces, inRange.length); for (let z = 0; z < zapCount; z++) { const target = inRange[z]; target.hp -= teslaDamage; target.lastTeslaHit = currentFrameTime; if (target.hp <= 0) target.dead = true; visualEffects.push({ type: 'lightning', x1: s.x, y1: s.y, x2: target.x, y2: target.y, expires: currentFrameTime + 150 }); } } } }); }
 
@@ -1278,12 +1378,11 @@ function animate() {
                 killCount++;
                 if (e.isBoss) { 
                     savedData.gold += 2 + bossGoldBonus + bountyHunterBonus; runGold += 2 + bossGoldBonus + bountyHunterBonus; saveGame(); updateGoldUI(); bossesKilled++; 
-                    triggerRandomWeather(); // WEATHER TRIGGERED HERE
+                    triggerRandomWeather(); 
                     if (bossesKilled === 10 && !crystalsSpawned) { crystalsSpawned = true; spawnCrystals(1); } else if (bossesKilled === 15 && !crystalsSpawned && savedData.prestigeUpgrades.trueEnding > 0) { crystalsSpawned = true; spawnCrystals(2); }
                 } 
                 else if (killCount % goldDropThreshold === 0) { savedData.gold += 1; runGold += 1; saveGame(); updateGoldUI(); }
 
-                // Voltaic Feedback Logic
                 if (currentFrameTime - e.lastTeslaHit < 500 && voltaicFeedbackZaps > 0) {
                     let nearby = enemies.filter(o => !o.dead && !o.charmed && Math.hypot(o.x - e.x, o.y - e.y) <= 150);
                     if (nearby.length > 0) {
@@ -1349,6 +1448,24 @@ function animate() {
                 for (let j = 0; j < enemies.length; j++) { const other = enemies[j]; if (i !== j && !other.charmed && !other.dead) { const dist = Math.hypot(other.x - e.x, other.y - e.y); if (dist < closestDist) { closestDist = dist; closestEnemy = other; } } }
                 if (closestEnemy) { targetAngle = Math.atan2(closestEnemy.y - e.y, closestEnemy.x - e.x); if (closestDist < e.radius + closestEnemy.radius + 2) { closestEnemy.hp -= (2 * zealousConvertsDmg * (1 + frenziedThrallsBonus)); e.hp -= 1; if (closestEnemy.hp <= 0) closestEnemy.dead = true; if (e.hp <= 0) e.dead = true; } } else { targetAngle = Math.atan2(e.y - player.y, e.x - player.x); }
             } else {
+                
+                // Hazard Blockers for Zombies
+                hazards.forEach(h => {
+                    if (h.type === 'rock' || h.type === 'thornbush') {
+                        const dist = Math.hypot(e.x - h.x, e.y - h.y);
+                        if (dist < e.radius + h.radius) {
+                            let overlap = (e.radius + h.radius) - dist;
+                            let nx = (e.x - h.x) / dist; let ny = (e.y - h.y) / dist;
+                            e.x += nx * overlap; e.y += ny * overlap;
+                            if (h.type === 'thornbush') {
+                                h.hp -= (e.isBoss ? 2.5 : 0.5);
+                                e.hp -= 0.1; // Passive damage
+                                if (e.hp <= 0) e.dead = true;
+                            }
+                        }
+                    }
+                });
+
                 structures.forEach(struct => {
                     if (struct.type === 'tar' || struct.type === 'frost') {
                         if (getCollisionData(e, struct).collided) {
@@ -1379,7 +1496,6 @@ function animate() {
                     if (e.poisoned && noxiousWeaknessActive) structDmg /= 2;
 
                     if (hitTarget.type === 'barricade' && Math.random() < stalwartDeflectionChance) {
-                        // Dodged the hit!
                     } else {
                         hitTarget.hp -= structDmg;
                     }
@@ -1398,14 +1514,12 @@ function animate() {
                 }
             }
 
-            // Heatwave overrides Tar slow
             if (currentWeather === 'Heatwave' && e.inTar) {
                 speedModifier /= tarSpeedMod;
-                e.hp -= 1; // Burn them instead
+                e.hp -= 1; 
                 if (e.hp <= 0) e.dead = true;
             }
 
-            // Apply Fossilized Pitch logic
             if (e.inTar) {
                 e.tarTime += deltaTime;
                 if (fossilizedPitchActive && e.tarTime >= 3000) {
@@ -1422,10 +1536,8 @@ function animate() {
             if (e.updraftSlow > 0) { e.updraftSlow -= deltaTime; speedModifier *= (1 - updraftSlow); }
             if (!e.inTar && e.stickySlow > 0) { e.stickySlow -= deltaTime; speedModifier *= (1 - stickyResidueSlow); }
 
-            // NEW MOVEMENT LOGIC
             const distToTower = Math.hypot(player.x - e.x, player.y - e.y);
             if (e.type === 'ranged' && !e.charmed && distToTower <= e.attackRange) {
-                // Stop moving, shoot an arrow
                 if (currentFrameTime - e.lastShot > 2000) {
                     enemyProjectiles.push({ 
                         x: e.x, y: e.y, targetX: player.x, targetY: player.y, speed: 4 
@@ -1445,7 +1557,6 @@ function animate() {
             p.x += Math.cos(angle) * p.speed;
             p.y += Math.sin(angle) * p.speed;
 
-            // Collision with tower
             if (Math.hypot(player.x - p.x, player.y - p.y) <= restrictedRadius) {
                 health -= 5; 
                 updateHealthUI();
@@ -1467,7 +1578,6 @@ function animate() {
         });
     }
 
-    // --- WEATHER DRAWING ---
     updateAndDrawWeather(ctx, currentFrameTime);
 
     // --- DRAW THE TOWER ---
@@ -1505,7 +1615,13 @@ function animate() {
         if (currentBlueprint === 'barricade') { w = 80; h = 20; } else if (currentBlueprint === 'tar') { w = 120; h = 120; } else if (currentBlueprint === 'wire') { w = 150; h = 40; } else if (currentBlueprint === 'tesla') { radius = 150; } else if (currentBlueprint === 'plague') { radius = plagueRadius; } else if (currentBlueprint === 'soul') { radius = 150 * wideNetRad; } else if (currentBlueprint === 'charm') { radius = 150 * charismaticReachRad; } else if (currentBlueprint === 'wind') { w = 30; h = 30; radius = 100; } else if (currentBlueprint === 'decoy') { w = 30; h = 60; radius = 150 + (loudCarvingsLevel * 15); } else if (currentBlueprint === 'frost') { w = 120; h = 120; } else if (currentBlueprint === 'focus') { w = 40; h = 40; radius = 100 * (1 + (resonantGemLevel * 0.10)); } else if (currentBlueprint === 'crucible') { w = 50; h = 50; radius = 120 * gildedRadiusRad; } else if (currentBlueprint === 'meteor') { w = 60; h = 60; radius = 300 * (1 + (astralPayloadLevel * 0.15)); }
 
         ctx.save(); ctx.translate(mouseX, mouseY); ctx.rotate(blueprintAngle);
-        if (Math.hypot(player.x - mouseX, player.y - mouseY) <= restrictedRadius) { 
+        
+        let invalidPlacement = Math.hypot(player.x - mouseX, player.y - mouseY) <= restrictedRadius;
+        if (!invalidPlacement) {
+            for (let h of hazards) { if (Math.hypot(mouseX - h.x, mouseY - h.y) <= h.radius + 15) { invalidPlacement = true; break; } }
+        }
+
+        if (invalidPlacement) { 
             ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'; ctx.strokeStyle = 'red'; ctx.fillRect(-w/2, -h/2, w, h); ctx.lineWidth = 2; ctx.strokeRect(-w/2, -h/2, w, h);
         } else {
             if (currentBlueprint === 'barricade') { ctx.fillStyle = 'rgba(139, 69, 19, 0.5)'; ctx.strokeStyle = 'white'; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeRect(-w/2, -h/2, w, h); } 
