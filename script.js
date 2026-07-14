@@ -8,7 +8,17 @@ ctx.imageSmoothingEnabled = false;
 const ASSETS = {
     playerTower: new Image(),
     zombie: new Image(),
+    zombieFrozen: new Image(),
+    zombieStunned: new Image(),
+    zombieRooted: new Image(),
+    zombieTarCovered: new Image(),
     swarmer: new Image(),
+    swarmerPoisoned: new Image(),
+    swarmerCharmed: new Image(),
+    swarmerFrozen: new Image(),
+    swarmerStunned: new Image(),
+    swarmerRooted: new Image(),
+    swarmerTarCovered: new Image(),
     brute: new Image(),
     ranged: new Image(),
     zombiePoisoned: new Image(),
@@ -20,18 +30,28 @@ const ASSETS = {
     tarPit: new Image()
 };
 
-ASSETS.playerTower.src = 'artwork/tower.png';
-ASSETS.zombie.src = 'artwork/zombie.png';
-ASSETS.swarmer.src = 'artwork/swarmer.png';
-ASSETS.brute.src = 'artwork/brute.png';
-ASSETS.ranged.src = 'artwork/ranged.png';
-ASSETS.zombiePoisoned.src = 'artwork/zombie_poisoned.png';
-ASSETS.zombieCharmed.src = 'artwork/zombie_charmed.png';
-ASSETS.poisonBubbles.src = 'artwork/bubbles.png';
-ASSETS.boss.src = 'artwork/boss.png';
-ASSETS.bossPoisoned.src = 'artwork/boss_poisoned.png';
-ASSETS.mendingWard.src = 'artwork/mending.png';
-ASSETS.tarPit.src = 'artwork/tar.png';
+ASSETS.playerTower.src = 'artwork/towers/tower.png';
+ASSETS.zombie.src = 'artwork/zombies/default/zombie.png';
+ASSETS.zombieFrozen.src = 'artwork/zombies/default/zombie_frozen.png';
+ASSETS.zombieStunned.src = 'artwork/zombies/default/zombie_stunned.png';
+ASSETS.zombieRooted.src = 'artwork/zombies/default/zombie_rooted.png';
+ASSETS.zombieTarCovered.src = 'artwork/zombies/default/zombie_tar_covered.png';
+ASSETS.swarmer.src = 'artwork/zombies/swarmer/swarmer.png';
+ASSETS.swarmerPoisoned.src = 'artwork/zombies/swarmer/swarmer_poisoned.png';
+ASSETS.swarmerCharmed.src = 'artwork/zombies/swarmer/swarmer_charmed.png';
+ASSETS.swarmerFrozen.src = 'artwork/zombies/swarmer/swarmer_frozen.png';
+ASSETS.swarmerStunned.src = 'artwork/zombies/swarmer/swarmer_stunned.png';
+ASSETS.swarmerRooted.src = 'artwork/zombies/swarmer/swarmer_rooted.png';
+ASSETS.swarmerTarCovered.src = 'artwork/zombies/swarmer/swarmer_tar_covered.png';
+ASSETS.brute.src = 'artwork/zombies/brute/brute.png';
+ASSETS.ranged.src = 'artwork/zombies/ranged/ranged.png';
+ASSETS.zombiePoisoned.src = 'artwork/zombies/default/zombie_poisoned.png';
+ASSETS.zombieCharmed.src = 'artwork/zombies/default/zombie_charmed.png';
+ASSETS.poisonBubbles.src = 'artwork/zombies/animations/bubbles.png';
+ASSETS.boss.src = 'artwork/zombies/boss/boss.png';
+ASSETS.bossPoisoned.src = 'artwork/zombies/boss/boss_poisoned.png';
+ASSETS.mendingWard.src = 'artwork/towers/mending.png';
+ASSETS.tarPit.src = 'artwork/towers/tar.png';
 
 const xpText = document.getElementById('xpText');
 const xpBarFill = document.getElementById('xpBarFill');
@@ -1015,12 +1035,54 @@ function getEnemyBaseSprite(enemy) {
     return ASSETS.zombie;
 }
 
+function isTarCovered(enemy) {
+    return enemy.inTar || (stickyResidueSlow > 0 && enemy.stickySlow > 0);
+}
+
+function getDedicatedEnemyStateSprite(enemy) {
+    if (enemy.isBoss) return enemy.poisoned && !enemy.charmed ? ASSETS.bossPoisoned : null;
+
+    if (enemy.type === 'swarmer') {
+        if (enemy.charmed) return ASSETS.swarmerCharmed;
+        if (enemy.frozen > 0) return ASSETS.swarmerFrozen;
+        if (enemy.stunned > 0) return ASSETS.swarmerStunned;
+        if (enemy.rooted > 0) return ASSETS.swarmerRooted;
+        if (isTarCovered(enemy)) return ASSETS.swarmerTarCovered;
+        if (enemy.poisoned) return ASSETS.swarmerPoisoned;
+        return null;
+    }
+
+    if (enemy.type !== 'zombie') return null;
+
+    if (enemy.charmed) return ASSETS.zombieCharmed;
+    if (enemy.frozen > 0) return ASSETS.zombieFrozen;
+    if (enemy.stunned > 0) return ASSETS.zombieStunned;
+    if (enemy.rooted > 0) return ASSETS.zombieRooted;
+    if (isTarCovered(enemy)) return ASSETS.zombieTarCovered;
+    if (enemy.poisoned) return ASSETS.zombiePoisoned;
+    return null;
+}
+
+function hasDedicatedCrowdControlSprite(sprite) {
+    return sprite === ASSETS.zombieFrozen
+        || sprite === ASSETS.zombieStunned
+        || sprite === ASSETS.zombieRooted
+        || sprite === ASSETS.zombieTarCovered
+        || sprite === ASSETS.swarmerFrozen
+        || sprite === ASSETS.swarmerStunned
+        || sprite === ASSETS.swarmerRooted
+        || sprite === ASSETS.swarmerTarCovered;
+}
+
+function hasDedicatedCharmedSprite(enemy, sprite) {
+    return enemy.charmed && (sprite === ASSETS.zombieCharmed || sprite === ASSETS.swarmerCharmed);
+}
+
 function getEnemySprite(enemy) {
-    if (enemy.charmed) return hasUniqueEnemySprite(enemy) ? getEnemyBaseSprite(enemy) : ASSETS.zombieCharmed;
+    const dedicatedStateSprite = getDedicatedEnemyStateSprite(enemy);
+    if (dedicatedStateSprite) return dedicatedStateSprite;
     if (enemy.poisoned) {
-        if (enemy.isBoss) return ASSETS.bossPoisoned;
         if (hasUniqueEnemySprite(enemy)) return getEnemyBaseSprite(enemy);
-        return ASSETS.zombiePoisoned;
     }
     return getEnemyBaseSprite(enemy);
 }
@@ -1166,6 +1228,8 @@ function drawEnemy(enemy) {
     const box = getEnemyDrawBox(enemy, size);
     const sprite = getEnemySprite(enemy);
     const hasSprite = sprite.complete && sprite.naturalHeight !== 0;
+    const hasDedicatedCrowdControlStateSprite = hasDedicatedCrowdControlSprite(sprite);
+    const hasDedicatedCharmedStateSprite = hasDedicatedCharmedSprite(enemy, sprite);
     const useUniqueSpriteArt = hasSprite && hasUniqueEnemySprite(enemy);
     const statusPad = enemy.type === 'brute' ? size * 0.12 : size * 0.06;
     const healthRatio = Math.max(0, enemy.hp / enemy.maxHp);
@@ -1176,7 +1240,7 @@ function drawEnemy(enemy) {
     if (enemy.charmed) ctx.rotate(Math.atan2(enemy.y - player.y, enemy.x - player.x) + Math.PI / 2);
     else ctx.rotate(Math.atan2(player.y - enemy.y, player.x - enemy.x) + Math.PI / 2);
 
-    if (enemy.frozen > 0 || enemy.stunned > 0) {
+    if ((enemy.frozen > 0 || enemy.stunned > 0) && !hasDedicatedCrowdControlStateSprite) {
         ctx.fillStyle = enemy.frozen > 0 ? 'rgba(129, 212, 250, 0.4)' : 'rgba(255, 215, 0, 0.4)';
         ctx.fillRect(box.x - statusPad, box.y - statusPad, box.w + statusPad * 2, box.h + statusPad * 2);
     }
@@ -1186,7 +1250,7 @@ function drawEnemy(enemy) {
     if (hasSprite) ctx.drawImage(sprite, box.x, box.y, box.w, box.h);
     else drawFallbackEnemy(box, enemy);
 
-    drawEnemyCharmedAura(enemy, size);
+    if (!hasDedicatedCharmedStateSprite) drawEnemyCharmedAura(enemy, size);
 
     if (!useUniqueSpriteArt) drawEnemyVariantOverlay(enemy, size);
 
