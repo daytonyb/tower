@@ -27,7 +27,12 @@ const ASSETS = {
     boss: new Image(),
     bossPoisoned: new Image(),
     mendingWard: new Image(),
-    tarPit: new Image()
+    tarPit: new Image(),
+    bush: new Image(),
+    lake: new Image(),
+    driedLake: new Image(),
+    magma: new Image(),
+    rocks: new Image()
 };
 
 ASSETS.playerTower.src = 'artwork/towers/tower.png';
@@ -52,6 +57,18 @@ ASSETS.boss.src = 'artwork/zombies/boss/boss.png';
 ASSETS.bossPoisoned.src = 'artwork/zombies/boss/boss_poisoned.png';
 ASSETS.mendingWard.src = 'artwork/towers/mending.png';
 ASSETS.tarPit.src = 'artwork/towers/tar.png';
+ASSETS.bush.src = 'artwork/naturals/bush.png';
+ASSETS.lake.src = 'artwork/naturals/lake.png';
+ASSETS.driedLake.src = 'artwork/naturals/dried_lake.png';
+ASSETS.magma.src = 'artwork/naturals/magma.png';
+ASSETS.rocks.src = 'artwork/naturals/rocks.png';
+
+const HAZARD_SPRITES = {
+    lake: ASSETS.lake,
+    magma: ASSETS.magma,
+    rock: ASSETS.rocks,
+    thornbush: ASSETS.bush
+};
 
 const xpText = document.getElementById('xpText');
 const xpBarFill = document.getElementById('xpBarFill');
@@ -1267,6 +1284,41 @@ function drawEnemy(enemy) {
     ctx.restore();
 }
 
+function drawHazard(hazard, currentFrameTime) {
+    const isDryLake = hazard.type === 'lake' && currentFrameTime <= hazard.dryUntil;
+    const sprite = isDryLake ? ASSETS.driedLake : HAZARD_SPRITES[hazard.type];
+    const canDrawSprite = sprite && sprite.complete && sprite.naturalHeight !== 0;
+
+    if (canDrawSprite) {
+        const size = hazard.radius * 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, hazard.radius, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(sprite, -hazard.radius, -hazard.radius, size, size);
+        return;
+    }
+
+    if (hazard.type === 'lake') {
+        ctx.fillStyle = isDryLake ? 'rgba(121, 85, 72, 0.3)' : 'rgba(33, 150, 243, 0.4)';
+    } else if (hazard.type === 'magma') {
+        ctx.fillStyle = 'rgba(255, 87, 34, 0.6)';
+    } else if (hazard.type === 'rock') {
+        ctx.fillStyle = '#757575';
+    } else {
+        ctx.fillStyle = '#2e7d32';
+    }
+
+    ctx.beginPath();
+    ctx.arc(0, 0, hazard.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (hazard.type === 'thornbush') {
+        ctx.strokeStyle = '#1b5e20';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+}
+
 function animate() {
     animationId = requestAnimationFrame(animate);
     const currentFrameTime = Date.now();
@@ -1295,18 +1347,7 @@ function animate() {
         let h = hazards[i];
 
         ctx.save(); ctx.translate(h.x, h.y);
-        if (h.type === 'lake') {
-            if (currentFrameTime > h.dryUntil) { ctx.fillStyle = 'rgba(33, 150, 243, 0.4)'; } // Water
-            else { ctx.fillStyle = 'rgba(121, 85, 72, 0.3)'; } // Dried Earth
-            ctx.beginPath(); ctx.arc(0, 0, h.radius, 0, Math.PI*2); ctx.fill();
-        } else if (h.type === 'magma') {
-            ctx.fillStyle = 'rgba(255, 87, 34, 0.6)'; ctx.beginPath(); ctx.arc(0, 0, h.radius, 0, Math.PI*2); ctx.fill();
-        } else if (h.type === 'rock') {
-            ctx.fillStyle = '#757575'; ctx.beginPath(); ctx.arc(0, 0, h.radius, 0, Math.PI*2); ctx.fill();
-        } else if (h.type === 'thornbush') {
-            ctx.fillStyle = '#2e7d32'; ctx.beginPath(); ctx.arc(0, 0, h.radius, 0, Math.PI*2); ctx.fill();
-            ctx.strokeStyle = '#1b5e20'; ctx.lineWidth = 2; ctx.stroke();
-        }
+        drawHazard(h, currentFrameTime);
         ctx.restore();
     }
 
