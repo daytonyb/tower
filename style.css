@@ -49,41 +49,117 @@ canvas { display: block; cursor: none; }
 /* Menus */
 #mainMenu {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(15, 15, 25, 0.95); display: flex; justify-content: center;
-    align-items: center; z-index: 20; cursor: default; 
+    background:
+        linear-gradient(90deg, rgba(7, 10, 20, 0.34) 0%, rgba(7, 10, 20, 0.08) 52%, transparent 100%),
+        linear-gradient(0deg, rgba(7, 10, 20, 0.32) 0%, transparent 55%, rgba(7, 10, 20, 0.2) 100%),
+        url("artwork/backgrounds/homepage.png") center center / cover no-repeat;
+    background-color: #0f0f19;
+    image-rendering: pixelated;
+    box-sizing: border-box;
+    display: flex; justify-content: flex-start;
+    align-items: center; z-index: 20; cursor: default;
+    overflow: auto;
 }
 
-.celeste-menu-container { display: flex; width: 95%; max-width: 1400px; height: 85vh; background: transparent; }
+#mainMenu[data-active-tab="tab-shop"] {
+    background-image:
+        linear-gradient(90deg, rgba(7, 10, 20, 0.34) 0%, rgba(7, 10, 20, 0.08) 52%, transparent 100%),
+        linear-gradient(0deg, rgba(7, 10, 20, 0.32) 0%, transparent 55%, rgba(7, 10, 20, 0.2) 100%),
+        url("artwork/backgrounds/shop.png");
+}
+
+#mainMenu[data-active-tab="tab-prestige"] {
+    background-image:
+        linear-gradient(90deg, rgba(12, 7, 22, 0.42) 0%, rgba(12, 7, 22, 0.1) 52%, transparent 100%),
+        linear-gradient(0deg, rgba(12, 7, 22, 0.36) 0%, transparent 55%, rgba(12, 7, 22, 0.24) 100%),
+        url("artwork/backgrounds/prestige.png");
+}
+
+.celeste-menu-container {
+    display: grid;
+    grid-template-columns: clamp(220px, 17vw, 280px) minmax(420px, 500px) clamp(220px, 17vw, 280px);
+    gap: clamp(24px, 2vw, 34px);
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: clamp(45px, 7vh, 80px) 4vw clamp(35px, 6vh, 65px);
+    justify-content: space-between;
+    background: transparent;
+}
+
+.celeste-menu-container[data-active-tab="tab-shop"],
+.celeste-menu-container[data-active-tab="tab-prestige"] {
+    grid-template-columns: clamp(220px, 17vw, 280px) minmax(0, 780px) clamp(220px, 17vw, 280px);
+}
+
+@media (min-width: 1101px) {
+    .celeste-menu-container[data-active-tab="tab-prestige"] {
+        grid-template-columns: clamp(220px, 17vw, 280px) minmax(0, 680px) clamp(220px, 17vw, 280px);
+    }
+}
 
 .menu-sidebar {
-    width: 20%; display: flex; flex-direction: column;
-    border-right: 4px solid rgba(255, 255, 255, 0.2); padding-right: 20px;
-    overflow-y: auto;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-self: start;
+    border: 0;
+    padding: 5vh 0 0;
+    overflow: visible;
 }
 
 .game-title-small {
-    color: #ff4500; font-size: 28px; margin-top: 0; margin-bottom: 40px;
-    text-shadow: 0 0 15px #ff4500, 4px 4px 0px black; line-height: 1.5;
+    width: 100%;
+    box-sizing: border-box;
+    color: #ff6a2b; font-size: clamp(27px, 2.4vw, 40px); margin-top: 0; margin-bottom: clamp(24px, 4vh, 42px);
+    text-shadow: 0 0 18px rgba(255, 69, 0, 0.72), 4px 4px 0 #3a1209; line-height: 1.4;
 }
 
 .menu-tab-btn {
-    background: transparent; border: none; color: #888;
+    width: 100%;
+    box-sizing: border-box;
+    background: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    color: #d2d6da;
     font-family: 'Press Start 2P', cursive; font-size: 12px;
-    text-align: left; padding: 15px 0; cursor: pointer; transition: all 0.2s ease;
+    text-align: left; padding: 13px 8px; cursor: pointer; transition: all 0.2s ease;
     text-shadow: 2px 2px 0px black;
 }
 
-.menu-tab-btn:hover { color: white; padding-left: 15px; }
-.menu-tab-btn.active { color: #4a90e2; padding-left: 15px; text-shadow: 0 0 10px rgba(74, 144, 226, 0.8), 2px 2px 0px black; }
+.menu-tab-btn:hover { color: white; padding-left: 16px; }
+.menu-tab-btn.active {
+    color: #ffd08a;
+    padding-left: 16px;
+    border-left-color: #e98745;
+    background: linear-gradient(90deg, rgba(70, 35, 21, 0.5), transparent 85%);
+    text-shadow: 0 0 10px rgba(233, 135, 69, 0.75), 2px 2px 0 black;
+}
 #btnTabPrestige.active { color: #e040fb; text-shadow: 0 0 10px rgba(170, 0, 255, 0.8), 2px 2px 0px black; }
 
-.menu-content-area { width: 80%; padding-left: 30px; position: relative; overflow-y: auto; }
-.menu-tab-content { display: none; animation: fadeIn 0.3s ease; height: 100%; }
+.menu-content-area {
+    grid-column: 2;
+    min-width: 0;
+    max-height: 80vh;
+    align-self: center;
+    box-sizing: border-box;
+    padding: clamp(28px, 3vw, 46px);
+    position: relative;
+    overflow-y: auto;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+}
+.menu-tab-content { display: none; animation: fadeIn 0.3s ease; }
 .menu-tab-content.active { display: block; }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
-.content-header { color: white; font-size: 20px; margin-top: 0; border-bottom: 4px solid #e94560; padding-bottom: 10px; display: inline-block; }
+.content-header { color: white; font-size: 20px; margin-top: 0; border-bottom: 4px solid #c86b3c; padding-bottom: 10px; display: inline-block; }
 .content-text { font-size: 12px; color: #ddd; line-height: 1.8; }
 .content-list { font-size: 10px; color: #ddd; line-height: 2.2; margin-top: 20px; }
 .content-list li { margin-bottom: 15px; }
@@ -94,6 +170,204 @@ canvas { display: block; cursor: none; }
     box-shadow: 4px 4px 0px black; transition: 0.1s; margin-top: 20px; width: 100%;
 }
 .start-btn:hover { background: #ff4500; transform: translate(2px, 2px); box-shadow: 2px 2px 0px black; }
+
+#mainMenu .start-btn {
+    background: linear-gradient(180deg, rgba(35, 45, 59, 0.94), rgba(19, 27, 39, 0.96));
+    border: 2px solid #ad825d;
+    color: #f3e4d0;
+    box-shadow:
+        inset 0 0 0 2px rgba(0, 0, 0, 0.32),
+        4px 4px 0 rgba(0, 0, 0, 0.62);
+}
+
+#mainMenu .start-btn:hover {
+    background: linear-gradient(180deg, #71432f, #41291f);
+    border-color: #e6b77c;
+}
+
+#saveSelectState,
+#runReadyState {
+    max-width: 450px;
+    margin: 0 auto;
+}
+
+#saveSelectState .start-btn {
+    margin-top: 0;
+}
+
+/* Wide menu views */
+.celeste-menu-container[data-active-tab="tab-shop"] .menu-content-area,
+.celeste-menu-container[data-active-tab="tab-prestige"] .menu-content-area {
+    width: 100%;
+    max-height: 86vh;
+    padding: clamp(22px, 2vw, 30px);
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+.celeste-menu-container[data-active-tab="tab-prestige"] .menu-content-area {
+    background: transparent;
+}
+
+.section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.section-heading .content-header {
+    margin-bottom: 6px !important;
+}
+
+.section-kicker {
+    margin: 0 0 18px;
+    color: #8593a3;
+    font-size: 8px;
+    line-height: 1.6;
+}
+
+.shop-toolbar,
+.upgrade-toolbar,
+.prestige-summary-row,
+.toolbar-balance,
+.prestige-stats {
+    display: flex;
+    align-items: center;
+}
+
+.shop-toolbar,
+.upgrade-toolbar,
+.prestige-summary-row {
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.shop-toolbar {
+    margin-bottom: 18px;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.24);
+    border-left: 2px solid #ad825d;
+}
+
+#mainMenu .reroll-btn,
+#mainMenu .prestige-action {
+    width: auto;
+    margin: 0;
+    padding: 9px 11px;
+    font-size: 8px;
+    white-space: nowrap;
+}
+
+#mainMenu .reroll-btn {
+    background: #5e432b;
+    border-color: #bd8c55;
+}
+
+#shopContainer,
+#prestigeContainer {
+    display: grid;
+    align-items: stretch;
+    gap: 12px;
+    margin-top: 0;
+}
+
+#shopContainer {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+#prestigeContainer {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#mainMenu .upgrade-card {
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 16px;
+    background: linear-gradient(160deg, rgba(31, 43, 58, 0.98), rgba(20, 29, 42, 0.98));
+    border: 1px solid #61758a;
+    border-top: 3px solid #7696b8;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.42);
+}
+
+#mainMenu .upgrade-card:hover {
+    background: linear-gradient(160deg, #293d52, #1d2b3d);
+    border-color: #91b4d6;
+}
+
+#mainMenu .upgrade-card h3 {
+    color: #a9cbed;
+    font-size: 9px;
+}
+
+#mainMenu .upgrade-card p {
+    color: #b9c0c8;
+    font-size: 7px;
+}
+
+#mainMenu .buy-btn {
+    width: 100%;
+    padding: 8px;
+    background: #9a6b36;
+    border: 1px solid #d3a463;
+    color: #fff5df;
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+#mainMenu .buy-btn:disabled {
+    background: #303641;
+    border-color: #505763;
+    color: #777f89;
+}
+
+.prestige-summary {
+    margin-bottom: 16px;
+    padding: 13px 15px;
+    background: rgba(124, 62, 160, 0.12);
+    border: 1px solid rgba(190, 104, 235, 0.42);
+}
+
+.prestige-stats {
+    flex-wrap: wrap;
+    gap: 9px 18px;
+}
+
+#mainMenu .prestige-action {
+    flex: 0 0 auto;
+    background: linear-gradient(180deg, #71308d, #421e56);
+    border-color: #c36cea;
+}
+
+.upgrade-toolbar {
+    margin-bottom: 12px;
+}
+
+.toolbar-balance {
+    gap: 10px;
+}
+
+#mainMenu .prestige-card {
+    background: linear-gradient(155deg, rgba(50, 27, 67, 0.98), rgba(27, 20, 44, 0.98)) !important;
+    border: 1px solid #77518d !important;
+    border-top: 3px solid #a160c1 !important;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.42) !important;
+}
+
+#mainMenu .prestige-card h3 {
+    color: #d295eb !important;
+}
+
+#mainMenu .prestige-card:hover {
+    background: linear-gradient(155deg, #49275e, #2c1c43) !important;
+    border-color: #c078dd !important;
+}
+
+#mainMenu .buy-btn.prestige-btn {
+    background: #71308d;
+    border-color: #c36cea;
+}
 
 #gameOverModal, #levelUpModal, #pauseMenu {
     display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -159,4 +433,160 @@ canvas { display: block; cursor: none; }
     z-index: 5; 
     pointer-events: none;
     transition: color 0.5s ease;
+}
+
+/* Curse Card Styling */
+.curse-card {
+    background: #1a0505 !important; 
+    border-color: #8b0000 !important; 
+}
+.curse-card h3 { 
+    color: #ff4500 !important; 
+    text-shadow: 2px 2px 0px #330000; 
+}
+.curse-card:hover {
+    background: #2a0a0a !important;
+    border-color: #ff4500 !important;
+    box-shadow: 0 0 15px #ff4500, 4px 4px 0px black !important;
+    transform: translate(2px, 2px) rotate(1deg) !important; 
+}
+
+@media (max-width: 1100px) {
+    .celeste-menu-container {
+        grid-template-columns: 205px minmax(0, 500px) 205px;
+        gap: 24px;
+        width: 100%;
+        padding: 5vh 4vw;
+    }
+
+    .celeste-menu-container[data-active-tab="tab-shop"],
+    .celeste-menu-container[data-active-tab="tab-prestige"] {
+        grid-template-columns: 205px minmax(0, 1fr) 205px;
+    }
+
+    .game-title-small {
+        font-size: 27px;
+    }
+
+    .menu-content-area {
+        width: 100%;
+    }
+}
+
+@media (min-width: 761px) and (max-width: 900px) {
+    .celeste-menu-container,
+    .celeste-menu-container[data-active-tab="tab-shop"],
+    .celeste-menu-container[data-active-tab="tab-prestige"] {
+        grid-template-columns: 205px minmax(0, 1fr);
+    }
+
+    #shopContainer {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .prestige-summary-row,
+    .upgrade-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (min-width: 901px) and (max-width: 1250px) {
+    #shopContainer {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 761px) and (max-height: 700px) {
+    .celeste-menu-container {
+        padding-top: 3vh;
+        padding-bottom: 3vh;
+    }
+
+    .menu-sidebar {
+        padding-top: 2vh;
+    }
+
+    .game-title-small {
+        margin-bottom: 16px;
+        font-size: 24px;
+    }
+
+    .menu-tab-btn {
+        padding-top: 9px;
+        padding-bottom: 9px;
+        font-size: 10px;
+    }
+
+    .menu-content-area {
+        max-height: 92vh;
+    }
+}
+
+@media (max-width: 760px) {
+    #mainMenu {
+        align-items: flex-start;
+        padding: 14px;
+    }
+
+    .celeste-menu-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        width: 100%;
+        height: auto;
+        min-height: calc(100vh - 28px);
+        padding: 16px;
+    }
+
+    .menu-sidebar {
+        flex: 0 0 auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        border-right: 0;
+        border-bottom: 3px solid rgba(255, 255, 255, 0.2);
+        padding: 0 0 12px;
+        overflow: visible;
+    }
+
+    .game-title-small {
+        width: 100%;
+        margin-bottom: 8px;
+        font-size: 18px;
+    }
+
+    .menu-tab-btn,
+    .menu-tab-btn:hover,
+    .menu-tab-btn.active {
+        padding: 7px 0;
+        font-size: 8px;
+    }
+
+    .menu-content-area {
+        flex: 1 1 auto;
+        max-height: none;
+        padding: 18px;
+        overflow: visible;
+    }
+
+    .content-header {
+        font-size: 16px;
+    }
+
+    .upgrade-card {
+        min-width: min(220px, 100%);
+    }
+
+    #shopContainer,
+    #prestigeContainer {
+        grid-template-columns: 1fr;
+    }
+
+    .shop-toolbar,
+    .prestige-summary-row,
+    .upgrade-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }

@@ -23,7 +23,7 @@
     <div id="ammoContainer"></div>
 
     <div id="mainMenu">
-        <div class="celeste-menu-container">
+        <div class="celeste-menu-container" data-active-tab="tab-start">
             <div class="menu-sidebar">
                 <h1 class="game-title-small">RAMPARTS<br>OF RUIN</h1>
                 
@@ -63,42 +63,52 @@
                 </div>
 
                 <div id="tab-shop" class="menu-tab-content">
-                    <h2 class="content-header" style="margin-bottom: 10px;">The Archmage's Shop</h2>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <p class="content-text" style="margin: 0;">Total Gold: <strong style="color: #ffd700;"><span id="hubTotalGoldEl">0</span></strong></p>
-                        <button class="start-btn" style="margin: 0; width: auto; padding: 10px; font-size: 10px; background: #f39c12; border-color: white;" onclick="refreshShop()">Reroll (1 Gold)</button>
+                    <div class="section-heading">
+                        <div>
+                            <h2 class="content-header">The Archmage's Shop</h2>
+                            <p class="section-kicker">Permanent equipment for the next siege.</p>
+                        </div>
                     </div>
-                    <div id="shopContainer" class="card-container" style="justify-content: flex-start; flex-wrap: wrap;"></div>
+                    <div class="shop-toolbar">
+                        <p class="content-text" style="margin: 0;">Total Gold: <strong style="color: #ffd700;"><span id="hubTotalGoldEl">0</span></strong></p>
+                        <button class="start-btn reroll-btn" onclick="refreshShop()">Reroll (1 Gold)</button>
+                    </div>
+                    <div id="shopContainer" class="card-container"></div>
                 </div>
 
                 <div id="tab-prestige" class="menu-tab-content">
-                    <h2 class="content-header" style="border-color: #aa00ff; color: #aa00ff; margin-bottom: 10px;">The Cosmic Altar</h2>
+                    <div class="section-heading">
+                        <div>
+                            <h2 class="content-header">The Cosmic Altar</h2>
+                            <p class="section-kicker">Trade the remains of this life for permanent power.</p>
+                        </div>
+                    </div>
                     
-                    <div style="background: rgba(170, 0, 255, 0.1); padding: 10px 15px; border: 2px solid #aa00ff; margin-bottom: 15px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                            <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                    <div class="prestige-summary">
+                        <div class="prestige-summary-row">
+                            <div class="prestige-stats">
                                 <p class="content-text" style="margin: 0; font-size: 10px;">PP: <strong style="color: #e040fb; font-size: 14px;"><span id="currentPPEl">0</span></strong></p>
                                 <p class="content-text" style="font-size: 8px; color: #aaa; margin: 0;">Unclaimed Time: <span id="unclaimedTimeEl">0h 0m</span></p>
                                 <p class="content-text" style="font-size: 8px; color: #aaa; margin: 0;">Unclaimed Wins: <span id="unclaimedWinsEl">0</span></p>
                                 <p class="content-text" style="font-size: 8px; color: #ffd700; margin: 0;">Gold Bonus: +<span id="goldConversionEl">0</span></p>
                                 <p class="content-text" style="margin: 0; font-size: 10px;">Pending PP: <strong style="color: #00e5ff;">+<span id="pendingPPEl">0</span></strong></p>
                             </div>
-                            <button class="start-btn" style="background: #aa00ff; border-color: #e040fb; font-size: 10px; margin: 0; padding: 10px; width: auto;" onclick="doPrestige()">PRESTIGE NOW</button>
+                            <button class="start-btn prestige-action" onclick="doPrestige()">PRESTIGE NOW</button>
                         </div>
                     </div>
                     
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div class="upgrade-toolbar">
                         <div>
                             <h3 style="color: white; font-size: 12px; margin: 0;">Cosmic Upgrades</h3>
                             <p class="content-text" style="font-size: 8px; color: #888; margin: 0; margin-top: 4px;">Permanent powers and structures applied every run.</p>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="toolbar-balance">
                             <p class="content-text" style="margin: 0; font-size: 10px;">Gold: <strong style="color: #ffd700;"><span id="prestigeHubGoldEl">0</span></strong></p>
-                            <button class="start-btn" style="margin: 0; width: auto; padding: 10px; font-size: 10px; background: #f39c12; border-color: white;" onclick="refreshPrestigeShop()">Reroll (25 Gold)</button>
+                            <button class="start-btn reroll-btn" onclick="refreshPrestigeShop()">Reroll (25 Gold)</button>
                         </div>
                     </div>
                     
-                    <div id="prestigeContainer" class="card-container" style="justify-content: flex-start; flex-wrap: wrap;"></div>
+                    <div id="prestigeContainer" class="card-container"></div>
                 </div>
 
                 <div id="tab-how" class="menu-tab-content">
@@ -125,13 +135,12 @@
                 </div>
 
 <div id="tab-patch" class="menu-tab-content">
-    <h2 class="content-header">Patch Notes (v0.10.4)</h2>
+    <h2 class="content-header">Patch Notes (v0.11.0)</h2>
     <ul class="content-list">
-        <li><strong style="color: #4fc3f7;">Dynamic Weather:</strong> Defeating bosses now triggerseven more powerful weather events like Thick Fog, Blizzards, and Blood Moons!</li>
-        <li><strong style="color: #f1c40f;">Enemy Diversity:</strong> The horde grows stronger with new Skeletons, Swarmers, and Brutes.</li>
-        <li><strong style="color: #00e5ff;">Bug Fixes:</strong> Numerous bug fixes have been implemented to enhance gameplay.</li>
-        <li><strong style="color: #15d251;">Art:</strong>Added Artwork for the Skeletons, Swarmers, and Brutes.</li>
-        <li><strong style="color: #d24415;">Environment:</strong> Added new environmental hazards: Lakes, Magma Pools, Bushes, and Rocks.</li>
+        <li><strong style="color: #4fc3f7;">Weather Changes:</strong> Changed how acid rain affects towers.</li>
+        <li><strong style="color: #15d251;">Art:</strong>Added background artwork and more enemy art.</li>
+        <li><strong style="color: #d24415;">Bug Fixes:</strong> Fixed a bug relating to thunderstorms.</li>
+        <li><strong style="color: #a511a8;">Curses:</strong> Added curses to the gameplay loop.</li>
                 
     </ul>
 </div>

@@ -26,6 +26,11 @@ const ASSETS = {
     poisonBubbles: new Image(),
     boss: new Image(),
     bossPoisoned: new Image(),
+    bossCharmed: new Image(),
+    bossFrozen: new Image(),
+    bossStunned: new Image(),
+    bossRooted: new Image(),
+    bossTarCovered: new Image(),
     mendingWard: new Image(),
     tarPit: new Image(),
     bush: new Image(),
@@ -55,6 +60,11 @@ ASSETS.zombieCharmed.src = 'artwork/zombies/default/zombie_charmed.png';
 ASSETS.poisonBubbles.src = 'artwork/zombies/animations/bubbles.png';
 ASSETS.boss.src = 'artwork/zombies/boss/boss.png';
 ASSETS.bossPoisoned.src = 'artwork/zombies/boss/boss_poisoned.png';
+ASSETS.bossCharmed.src = 'artwork/zombies/boss/boss_charmed.png';
+ASSETS.bossFrozen.src = 'artwork/zombies/boss/boss_frozen.png';
+ASSETS.bossStunned.src = 'artwork/zombies/boss/boss_stunned.png';
+ASSETS.bossRooted.src = 'artwork/zombies/boss/boss_rooted.png';
+ASSETS.bossTarCovered.src = 'artwork/zombies/boss/boss_tar_covered.png';
 ASSETS.mendingWard.src = 'artwork/towers/mending.png';
 ASSETS.tarPit.src = 'artwork/towers/tar.png';
 ASSETS.bush.src = 'artwork/naturals/bush.png';
@@ -112,6 +122,8 @@ function switchMenuTab(tabId, buttonElement) {
     document.querySelectorAll('.menu-tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
     buttonElement.classList.add('active');
+    mainMenu.dataset.activeTab = tabId;
+    document.querySelector('.celeste-menu-container').dataset.activeTab = tabId;
 }
 
 function showSaveSelect() {
@@ -313,6 +325,45 @@ const BLUEPRINT_DB = {
     meteor: { name: 'Meteor Beacon', desc: 'Explodes when destroyed.' }
 };
 
+// --- CURSE DATA ---
+const CURSE_DATA = {
+    // Original Batch
+    thickSkulls: { name: "Thick Skulls", desc: "Brutes have +50% Max HP." },
+    frenzyVirus: { name: "Frenzy Virus", desc: "Swarmers move 25% faster." },
+    leakingMana: { name: "Leaking Mana", desc: "-1 Max Ammo." },
+    heavyAir: { name: "Heavy Air", desc: "-20% Blast Radius." },
+    magicalInterference: { name: "Interference", desc: "Build zone expands +50px." },
+    brittleWood: { name: "Brittle Wood", desc: "Barricades take 2x dmg." },
+    dilutedPitch: { name: "Diluted Pitch", desc: "Tar slows 30% less." },
+    shortCircuits: { name: "Short Circuits", desc: "Tesla fires 20% slower." },
+    tarnishedCoins: { name: "Tarnished Coins", desc: "+10 kills needed for Gold drop." },
+    soulDrought: { name: "Soul Drought", desc: "-15% Global XP gain." },
+
+    // Expansion Batch 1
+    hollowedBones: { name: "Hollowed Bones", desc: "Ranged enemies shoot 50% faster." },
+    goliathsShadow: { name: "Goliath's Shadow", desc: "Bosses move 20% faster & hit 2x harder." },
+    tectonicShift: { name: "Tectonic Shift", desc: "Hazards have a 50% larger radius." },
+    unstableAtmosphere: { name: "Unstable Atmosphere", desc: "Negative weather lasts twice as long." },
+    tunnelVision: { name: "Tunnel Vision", desc: "Spells lose 50% of their Blast Radius." },
+    arcaneExhaustion: { name: "Arcane Exhaustion", desc: "Max Ammo is hard-capped at 3." },
+    erosiveRunes: { name: "Erosive Runes", desc: "Structures slowly lose 1 HP per second." },
+    conductivePlating: { name: "Conductive Plating", desc: "Tesla Runes damage Barricades." },
+    necroticSoil: { name: "Necrotic Soil", desc: "Siphons reduce nearby structure Max HP by 20%." },
+
+    // Expansion Batch 2
+    restlessDead: { name: "Restless Dead", desc: "Base spawn delay reduced by 20%." },
+    vampiricHunger: { name: "Vampiric Hunger", desc: "Zombies heal 10% HP on attacking walls/tower." },
+    necromancersSpite: { name: "Necromancer's Spite", desc: "10% chance dead zombies spawn Swarmers." },
+    leadFoot: { name: "Lead Foot", desc: "Knockback effects are 50% less effective." },
+    defectiveRunes: { name: "Defective Runes", desc: "All trap cooldowns take 15% longer." },
+    brittleFoundation: { name: "Brittle Foundation", desc: "The Tower's Max HP is reduced by 25." },
+    dullBarbs: { name: "Dull Barbs", desc: "Barbed Wire loses Root and DoT effects." },
+    rottenTimber: { name: "Rotten Timber", desc: "Decoys have 30% less HP and do not slow." },
+    sluggishMana: { name: "Sluggish Mana", desc: "Ammo recharges 15% slower." },
+    brainFog: { name: "Brain Fog", desc: "XP required to level up scales 20% faster." },
+    shatteredFocus: { name: "Shattered Focus", desc: "Spells can no longer bounce." }
+};
+
 // --- RUN VARIABLES ---
 let maxHealth, health, towerShield = 0, maxAmmo, currentAmmo, rechargeRate, maxBlastRadius;
 let barricadeHP, tarSpeedMod, wireDamageBonus, teslaDamage, plagueRadius, soulMultiplier, mendingCooldown, xpMultiplier;
@@ -338,6 +389,19 @@ let goldenEpochBonus, ricochetBounces, vampiricChance, soulBatteryReduction, bou
 let chronoSurgeActive = false, chronoSurgeMult = 1, bloodReckoningReduction = 0, echoesOfPowerXP = 0;
 let lureSpawnReduction = 0, overloadChance = 0, bossLevelThreshold = 5, bossTimerReduction = 0, baseTimeDilation = 1;
 
+// Curse State Variables
+let activeCurses = {};
+let cursesQueued = 0;
+let curseBruteHpMult = 1, curseSwarmerSpeedMult = 1, curseAmmoLoss = 0;
+let curseBlastRadiusMult = 1, curseBuildRadiusMod = 0;
+let curseWoodDmgMult = 1, curseTarSlowMod = 0;
+let curseTeslaSpeedMult = 1, curseGoldThresholdMod = 0;
+let curseXpMult = 1;
+
+let curseRangedCooldownMod = 1, curseBossSpeedMod = 1, curseBossDmgMod = 1;
+let curseSpawnDelayMod = 1, curseTrapCooldownMod = 1, curseAmmoRechargeMod = 1;
+let curseXpScaleMod = 1.4, curseKnockbackMod = 1;
+
 let animationId, isPaused = false, isGameStarted = false; 
 let survivalTimeMs = 0, lastFrameTime = Date.now(), formattedTime = "00:00";
 let level = 1, xp = 0, xpToNextLevel = 100, lastBossLevel = 0; 
@@ -358,7 +422,7 @@ let weatherAlpha = 0; // For visual fade-ins
 let lastLightningStrike = 0;
 let weatherStartTimeout = null;
 let lastRechargeTime = 0;
-const restrictedRadius = 120; 
+let restrictedRadius = 120; // Changed to let to allow modification 
 
 let spawnTimer, mouseX = logicalWidth / 2, mouseY = logicalHeight / 2;
 const player = { x: logicalWidth / 2, y: logicalHeight / 2 };
@@ -372,11 +436,13 @@ const SUNNY_WEATHER = {
     spawnDelayMult: 1,
     xpMult: 1,
     goldMult: 1,
-    visibilityRadiusMult: 1
+    visibilityRadiusMult: 1,
+    trapCooldownMult: 1,
+    trapEffectMult: 1
 };
 
 const WEATHER_TYPES = {
-    'Acid Rain': { name: 'Acid Rain', duration: 45000, color: '#76ff03', enemySpeedMult: 1, rechargeMult: 1, spawnDelayMult: 1, xpMult: 1, goldMult: 1, visibilityRadiusMult: 1 },
+    'Acid Rain': { name: 'Acid Rain', duration: 45000, color: '#76ff03', enemySpeedMult: 1, rechargeMult: 1, spawnDelayMult: 1, xpMult: 1, goldMult: 1, visibilityRadiusMult: 1, trapCooldownMult: 2, trapEffectMult: 0.5 },
     Heatwave: { name: 'Heatwave', duration: 30000, color: '#ff7043', enemySpeedMult: 1, rechargeMult: 1, spawnDelayMult: 1, xpMult: 1, goldMult: 1, visibilityRadiusMult: 1 },
     Thunderstorm: { name: 'Thunderstorm', duration: 60000, color: '#9fa8da', enemySpeedMult: 1, rechargeMult: 1, spawnDelayMult: 1, xpMult: 1, goldMult: 1, visibilityRadiusMult: 1 },
     'Thick Fog': { name: 'Thick Fog', duration: 45000, color: '#cfd8dc', enemySpeedMult: 1, rechargeMult: 1, spawnDelayMult: 1, xpMult: 1, goldMult: 1, visibilityRadiusMult: 0.5 },
@@ -390,6 +456,14 @@ function getWeatherConfig(name = currentWeather) {
 
 function getActiveWeatherConfig() {
     return weatherState === 'active' ? getWeatherConfig(currentWeather) : SUNNY_WEATHER;
+}
+
+function getTrapCooldownMult() {
+    return (getActiveWeatherConfig().trapCooldownMult || 1) * curseTrapCooldownMod;
+}
+
+function getTrapEffectMult() {
+    return getActiveWeatherConfig().trapEffectMult || 1;
 }
 
 function updateWeatherDisplay(name) {
@@ -413,6 +487,48 @@ function resetWeather(updateDisplay = true) {
     weatherTimer = 0;
     weatherAlpha = 0;
     if (updateDisplay) updateWeatherDisplay('Sunny');
+}
+
+function applyActiveCurses() {
+    curseBruteHpMult = activeCurses.thickSkulls ? 1.5 : 1;
+    curseSwarmerSpeedMult = activeCurses.frenzyVirus ? 1.25 : 1;
+    curseAmmoLoss = activeCurses.leakingMana ? 1 : 0;
+    curseBlastRadiusMult = (activeCurses.heavyAir ? 0.8 : 1) * (activeCurses.tunnelVision ? 0.5 : 1);
+    curseBuildRadiusMod = activeCurses.magicalInterference ? 50 : 0;
+    curseWoodDmgMult = activeCurses.brittleWood ? 2 : 1;
+    curseTarSlowMod = activeCurses.dilutedPitch ? -0.3 : 0; 
+    curseTeslaSpeedMult = activeCurses.shortCircuits ? 1.2 : 1;
+    curseGoldThresholdMod = activeCurses.tarnishedCoins ? 10 : 0;
+    curseXpMult = activeCurses.soulDrought ? 0.85 : 1;
+
+    // New Modifiers dynamically bound
+    curseRangedCooldownMod = activeCurses.hollowedBones ? 0.5 : 1;
+    curseBossSpeedMod = activeCurses.goliathsShadow ? 1.2 : 1;
+    curseBossDmgMod = activeCurses.goliathsShadow ? 2 : 1;
+    curseSpawnDelayMod = activeCurses.restlessDead ? 0.8 : 1;
+    curseTrapCooldownMod = activeCurses.defectiveRunes ? 1.15 : 1;
+    curseAmmoRechargeMod = activeCurses.sluggishMana ? 1.15 : 1;
+    curseXpScaleMod = activeCurses.brainFog ? 1.6 : 1.4;
+    curseKnockbackMod = activeCurses.leadFoot ? 0.5 : 1;
+
+    // Dynamically apply curse changes to base stats
+    restrictedRadius = 120 + curseBuildRadiusMod;
+    
+    // Ensure ammo stays within bounds if leaking mana is taken
+    maxAmmo = (5 + (savedData.upgrades.deepPockets || 0)) - curseAmmoLoss;
+    if (activeCurses.arcaneExhaustion) maxAmmo = Math.min(maxAmmo, 3);
+    if (currentAmmo > maxAmmo) currentAmmo = maxAmmo;
+    updateAmmoUI();
+
+    // Recalculate Max HP
+    let calculatedMaxHealth = 100 + ((savedData.upgrades.masonry || 0) * 10);
+    if (activeCurses.brittleFoundation) calculatedMaxHealth -= 25; // Apply per-run debuff
+
+    if (calculatedMaxHealth < maxHealth && health > calculatedMaxHealth) {
+        health = calculatedMaxHealth; // Cap health if it exceeds the new max
+    }
+    maxHealth = calculatedMaxHealth;
+    updateHealthUI();
 }
 
 function applyUpgrades() {
@@ -510,7 +626,6 @@ function applyUpgrades() {
     philosophersStoneActive = (p.philosophersStone || 0) > 0;
     scorchedEarthActive = (p.scorchedEarth || 0) > 0;
 
-    // Set new prestige upgrade values
     stalwartDeflectionChance = (p.stalwartDeflection || 0) * 0.10;
     fossilizedPitchActive = (p.fossilizedPitch || 0) > 0;
     rendingBarbsActive = (p.rendingBarbs || 0) > 0;
@@ -527,6 +642,8 @@ function applyUpgrades() {
     baseTimeDilation = 1 + ((p.timeDilator || 0) * 0.1); 
     
     xpToNextLevel = 100;
+
+    applyActiveCurses(); // Apply any curse adjustments after standard upgrades
 }
 
 function updateAmmoUI() {
@@ -637,6 +754,8 @@ function refreshPrestigeShop() {
 
 // --- GAME STATE FLOW ---
 function startGame() {
+    activeCurses = {};
+    cursesQueued = 0;
     applyUpgrades(); updateAmmoUI(); updateGoldUI();
     mainMenu.style.display = 'none'; 
     isGameStarted = true;
@@ -652,61 +771,56 @@ function startActualRun() {
     if (goldenEpochBonus > 0) { savedData.gold += goldenEpochBonus; runGold += goldenEpochBonus; saveGame(); updateGoldUI(); }
     if (echoesOfPowerXP > 0) { addXp(echoesOfPowerXP); }
 
-    // --- GENERATE HAZARDS ---
     hazards.length = 0;
     
-    // Helper function to check if a new hazard overlaps with existing ones or the tower
     function isValidSpawn(testX, testY, testRadius) {
-        // 1. Don't spawn inside the player's restricted building zone
         if (Math.hypot(player.x - testX, player.y - testY) < restrictedRadius + testRadius + 20) {
             return false;
         }
 
-        // 2. Don't spawn on top of another hazard
         for (let h of hazards) {
-            // If the distance between them is less than their combined radiuses + 15px padding, it's an overlap
             if (Math.hypot(testX - h.x, testY - h.y) < testRadius + h.radius + 15) {
                 return false; 
             }
         }
         
-        return true; // The spot is clear!
+        return true; 
     }
     
-    // Pools (0 to 5)
     const numPools = Math.floor(Math.random() * 6); 
     for(let i = 0; i < numPools; i++) {
         let attempts = 0;
         let placed = false;
-        let radius = 125; // Our new, larger size
+        let radius = 125;
 
-        // Try up to 50 times to find a valid spot to prevent the game from freezing
         while (attempts < 50 && !placed) {
             let r = 200 + Math.random() * (Math.min(logicalWidth, logicalHeight) / 2 - 100);
             let angle = Math.random() * Math.PI * 2;
             let hx = player.x + Math.cos(angle) * r;
             let hy = player.y + Math.sin(angle) * r;
 
-            if (isValidSpawn(hx, hy, radius)) {
+            // Apply tectonic shift radius scaling here
+            let scaledRadius = radius * (activeCurses.tectonicShift ? 1.5 : 1);
+
+            if (isValidSpawn(hx, hy, scaledRadius)) {
                 hazards.push({
                     type: Math.random() < 0.5 ? 'lake' : 'magma',
                     x: hx, 
                     y: hy, 
-                    radius: radius, 
+                    radius: scaledRadius, 
                     dryUntil: 0
                 });
-                placed = true; // Successfully placed, break the while loop
+                placed = true; 
             }
             attempts++;
         }
     }
 
-    // Obstacles (0 to 7)
     const numObstacles = Math.floor(Math.random() * 8); 
     for(let i = 0; i < numObstacles; i++) {
         let attempts = 0;
         let placed = false;
-        let radius = 75; // Our new, larger size
+        let radius = 75;
 
         while (attempts < 50 && !placed) {
             let r = 250 + Math.random() * (Math.min(logicalWidth, logicalHeight) / 2 - 100);
@@ -714,12 +828,15 @@ function startActualRun() {
             let hx = player.x + Math.cos(angle) * r;
             let hy = player.y + Math.sin(angle) * r;
 
-            if (isValidSpawn(hx, hy, radius)) {
+            // Apply tectonic shift radius scaling here
+            let scaledRadius = radius * (activeCurses.tectonicShift ? 1.5 : 1);
+
+            if (isValidSpawn(hx, hy, scaledRadius)) {
                 hazards.push({
                     type: Math.random() < 0.5 ? 'rock' : 'thornbush',
                     x: hx, 
                     y: hy, 
-                    radius: radius
+                    radius: scaledRadius
                 });
                 placed = true;
             }
@@ -727,7 +844,7 @@ function startActualRun() {
         }
     }
 
-    if (levelUpsQueued === 0 && !isPaused) spawnWave();
+    if (levelUpsQueued === 0 && cursesQueued === 0 && !isPaused) spawnWave();
 }
 
 function resetGame() {
@@ -745,6 +862,10 @@ function resetGame() {
     
     isGameStarted = false; isPaused = false; currentBlueprint = null; controlsTip.style.display = 'none';
     bossesKilled = 0; crystalsSpawned = false; victoryAchieved = false; crystals.length = 0; levelUpsQueued = 0;
+    
+    activeCurses = {};
+    cursesQueued = 0;
+
     resetWeather();
     
     survivalTimeMs = 0; formattedTime = "00:00"; timerDisplay.innerText = formattedTime;
@@ -884,18 +1005,36 @@ window.addEventListener('click', (event) => {
         else if (currentBlueprint === 'mending') { w = 30; h = 30; radius = 150 * expandedSanctuaryRad; hp = 50 + wardHPBonus; }
         else if (currentBlueprint === 'charm') { w = 30; h = 30; radius = 150 * charismaticReachRad; hp = 50 + wardHPBonus; }
         else if (currentBlueprint === 'wind') { w = 30; h = 30; radius = 100; hp = 50 + wardHPBonus; }
-        else if (currentBlueprint === 'decoy') { w = 30; h = 60; radius = 150 + (loudCarvingsLevel * 15); hp = 150 + wardHPBonus + reinforcedBarkHp; }
+        else if (currentBlueprint === 'decoy') { w = 30; h = 60; radius = 150 + (loudCarvingsLevel * 15); hp = (150 + wardHPBonus + reinforcedBarkHp) * (activeCurses.rottenTimber ? 0.7 : 1); }
         else if (currentBlueprint === 'frost') { w = 120; h = 120; }
         else if (currentBlueprint === 'focus') { w = 40; h = 40; radius = 100 * (1 + (resonantGemLevel * 0.10)); hp = 30 + wardHPBonus; }
         else if (currentBlueprint === 'crucible') { w = 50; h = 50; radius = 120 * gildedRadiusRad; hp = 80 + wardHPBonus; }
         else if (currentBlueprint === 'meteor') { w = 60; h = 60; hp = 200 + wardHPBonus + sturdyCasingHp; radius = 300 * (1 + (astralPayloadLevel * 0.15)); }
 
+        if (activeCurses.necroticSoil) {
+            let nearSoul = false;
+            structures.forEach(s => {
+                if (s.type === 'soul' && Math.hypot(s.x - clickX, s.y - clickY) <= s.radius) {
+                    nearSoul = true;
+                }
+            });
+            if (nearSoul) hp *= 0.8;
+        }
+
         structures.push({ type: currentBlueprint, x: clickX, y: clickY, w: w, h: h, angle: blueprintAngle, hp: hp, radius: radius, hitZombies: new Map(), lastTick: Date.now() });
 
-        if (currentBlueprint === 'soul' && harvestSurgeXp > 0) { addXp(harvestSurgeXp); }
+        if (currentBlueprint === 'soul' && harvestSurgeXp > 0) { addXp(harvestSurgeXp * getTrapEffectMult()); }
 
         currentBlueprint = null; controlsTip.style.display = 'none';
-        if (levelUpsQueued > 0) processLevelUpQueue(); else { isPaused = false; lastFrameTime = Date.now(); lastPlaytimeSave = Date.now(); spawnWave(); }
+        
+        // This is the new flow controlling level ups and curse triggers!
+        if (levelUpsQueued > 0) {
+            processLevelUpQueue();
+        } else if (cursesQueued > 0) {
+            showCurseMenu();
+        } else { 
+            isPaused = false; lastFrameTime = Date.now(); lastPlaytimeSave = Date.now(); spawnWave(); 
+        }
         return; 
     }
 
@@ -910,20 +1049,23 @@ window.addEventListener('click', (event) => {
     currentAmmo--; updateAmmoUI();
 
     const distToTarget = Math.hypot(clickX - player.x, clickY - player.y);
-    let localDamageBonus = spellDamageBonus; let localBlastRadius = maxBlastRadius; let localBounces = ricochetBounces;
+    let localDamageBonus = spellDamageBonus; 
+    let localBlastRadius = maxBlastRadius * curseBlastRadiusMult; 
+    let localBounces = activeCurses.shatteredFocus ? 0 : ricochetBounces;
     
     structures.forEach(s => {
         if (s.type === 'focus' && Math.hypot(clickX - s.x, clickY - s.y) <= s.radius) {
-            localDamageBonus += Math.floor(spellDamageBonus * flawlessFacetDmg) + 3; 
-            localBlastRadius *= 1.5 * refractingLensRad;
-            localBounces += prismaticBeamBounces;
+            const trapEffectMult = getTrapEffectMult();
+            localDamageBonus += (Math.floor(spellDamageBonus * flawlessFacetDmg) + 3) * trapEffectMult;
+            localBlastRadius *= 1 + (((1.5 * refractingLensRad) - 1) * trapEffectMult);
+            if (!activeCurses.shatteredFocus) localBounces += prismaticBeamBounces;
         }
     });
 
     spells.push({
         startX: player.x, startY: player.y, targetX: clickX, targetY: clickY, distance: distToTarget,
         progress: 0, arcHeight: Math.min(distToTarget * 0.4, 200), radius: 0, maxRadius: localBlastRadius, state: 'flying', 
-        hitEnemies: new Set(), bounces: localBounces, bounceHistory: new Set(), damageBonus: localDamageBonus, isFromFocus: localBlastRadius > maxBlastRadius
+        hitEnemies: new Set(), bounces: localBounces, bounceHistory: new Set(), damageBonus: localDamageBonus, isFromFocus: localBlastRadius > (maxBlastRadius * curseBlastRadiusMult)
     });
 });
 
@@ -935,6 +1077,14 @@ function selectBlueprint(type, event) {
 
 function showLevelUpMenu() {
     isPaused = true; clearTimeout(spawnTimer); levelUpContainer.innerHTML = '';
+    
+    // Ensure header is correct (in case it was modified by the curse menu)
+    const title = levelUpModal.querySelector('h2');
+    const desc = levelUpModal.querySelector('p');
+    title.innerText = "LEVEL UP!";
+    title.style.color = "white";
+    desc.innerText = "Select a blueprint to place on the battlefield:";
+
     const keys = Object.keys(BLUEPRINT_DB); shuffleArray(keys); const options = keys.slice(0, 3);
     options.forEach(key => {
         const item = BLUEPRINT_DB[key]; const btn = document.createElement('button'); btn.className = 'upgrade-card';
@@ -946,24 +1096,86 @@ function showLevelUpMenu() {
 function processLevelUpQueue() { if (levelUpsQueued > 0) { levelUpsQueued--; showLevelUpMenu(); } }
 
 function addXp(amount) {
-    xp += Math.floor(amount * xpMultiplier); 
-    while (xp >= xpToNextLevel) { xp -= xpToNextLevel; level++; xpToNextLevel = Math.floor(xpToNextLevel * 1.4); levelUpsQueued++; }
+    xp += Math.floor(amount * xpMultiplier * curseXpMult); 
+    while (xp >= xpToNextLevel) { xp -= xpToNextLevel; level++; xpToNextLevel = Math.floor(xpToNextLevel * curseXpScaleMod); levelUpsQueued++; }
     xpBarFill.style.width = `${Math.min(100, (xp / xpToNextLevel) * 100)}%`; xpText.innerHTML = `${xp} / ${xpToNextLevel}`;
     if (levelUpsQueued > 0 && !isPaused && !currentBlueprint) processLevelUpQueue();
+}
+
+// --- CURSE MENU LOGIC ---
+function showCurseMenu() {
+    isPaused = true; clearTimeout(spawnTimer);
+    levelUpContainer.innerHTML = '';
+
+    levelUpModal.style.display = 'flex';
+    canvas.style.cursor = 'default';
+
+    const title = levelUpModal.querySelector('h2');
+    const desc = levelUpModal.querySelector('p');
+    title.innerText = "THE HORDE MUTATES...";
+    title.style.color = "#ff4500";
+    desc.innerText = "The cosmic forces react to your strength. Choose your poison carefully:";
+
+    let availableCurses = Object.keys(CURSE_DATA).filter(k => !activeCurses[k]);
+    if (availableCurses.length === 0) {
+        // If they somehow take every single curse, just unpause
+        cursesQueued--;
+        selectCurse(null);
+        return;
+    }
+
+    shuffleArray(availableCurses);
+    let options = availableCurses.slice(0, 3);
+
+    options.forEach(key => {
+        const item = CURSE_DATA[key];
+        const btn = document.createElement('button');
+        btn.className = 'upgrade-card curse-card';
+        btn.onclick = (e) => selectCurse(key, e);
+        btn.innerHTML = `<h3>${item.name}</h3><p>${item.desc}</p>`;
+        levelUpContainer.appendChild(btn);
+    });
+}
+
+function selectCurse(type, event) {
+    if (event) event.stopPropagation();
+    if (type) activeCurses[type] = true;
+    cursesQueued--;
+
+    applyActiveCurses();
+
+    levelUpModal.style.display = 'none';
+
+    // Reset Level Up Modal text back to normal for next time
+    const title = levelUpModal.querySelector('h2');
+    const desc = levelUpModal.querySelector('p');
+    title.innerText = "LEVEL UP!";
+    title.style.color = "white";
+    desc.innerText = "Select a blueprint to place on the battlefield:";
+
+    if (levelUpsQueued > 0) {
+        processLevelUpQueue();
+    } else if (cursesQueued > 0) {
+        showCurseMenu();
+    } else {
+        isPaused = false;
+        lastFrameTime = Date.now(); lastPlaytimeSave = Date.now();
+        spawnWave();
+    }
 }
 
 // --- ENEMY SPAWNING ---
 function spawnBossEnemy() {
     const angle = Math.random() * Math.PI * 2; const x = player.x + Math.cos(angle) * (logicalWidth / 2 + 100); const y = player.y + Math.sin(angle) * (logicalHeight / 2 + 100);
     const bossHp = 80 + (level * 15); const baseBossXp = 200 + (level * 50); const brMultiplier = 1 + bloodReckoningReduction * 1.5;
-    enemies.push({ x, y, radius: 35, baseSpeed: 0.08, hp: bossHp, maxHp: bossHp, xpDrop: Math.floor(baseBossXp * brMultiplier), dead: false, isBoss: true, poisoned: false, charmed: false, inTar: false, tarTime: 0, rending: false, lastTeslaHit: 0, chill: 0, frozen: 0, splinterSlow: 0, stickySlow: 0, updraftSlow: 0, stunned: 0, tetanus: false, rooted: 0 });
+    enemies.push({ x, y, radius: 35, baseSpeed: 0.08 * curseBossSpeedMod, hp: bossHp, maxHp: bossHp, xpDrop: Math.floor(baseBossXp * brMultiplier), dead: false, isBoss: true, poisoned: false, charmed: false, inTar: false, tarTime: 0, rending: false, lastTeslaHit: 0, chill: 0, frozen: 0, splinterSlow: 0, stickySlow: 0, updraftSlow: 0, stunned: 0, tetanus: false, rooted: 0 });
 }
 
 function spawnWave() {
     if (isPaused || !isGameStarted) return;
     const minSpawn = Math.max(1000, 3000 - lureSpawnReduction); 
     const maxSpawn = Math.max(2000, 7000 - lureSpawnReduction);
-    const delayMult = Math.max(0.2, 1 - bloodReckoningReduction); 
+    const delayMult = Math.max(0.2, 1 - bloodReckoningReduction) * curseSpawnDelayMod; 
     const nextSpawnDelay = (Math.random() * (maxSpawn - minSpawn) + minSpawn) * delayMult * getActiveWeatherConfig().spawnDelayMult;
     
     if (level % bossLevelThreshold === 0 && lastBossLevel !== level) { 
@@ -995,15 +1207,24 @@ function spawnWave() {
             let hp = Math.floor((Math.random() * 11 + 5) * hpMult);
             let radius = 15;
             let range = 0;
+            let finalXp = Math.floor((hp + speed * 10) * brMult);
 
             // Determine enemy type based on random roll
             if (waveTypeRoll < 0.2 && level > 2) { 
                 // SWARMERS: Fast, weak, small, high count
-                eType = 'swarmer'; speed *= 1.8; hp = Math.max(1, Math.floor(hp * 0.3)); radius = 10;
+                eType = 'swarmer'; 
+                speed *= 1.8 * curseSwarmerSpeedMult; 
+                hp = Math.max(1, Math.floor(hp * 0.3)); 
+                radius = 10;
+                if (activeCurses.frenzyVirus) finalXp = Math.floor(finalXp * 1.2);
                 if (i === 0) groupSize = Math.floor(groupSize * 1.5); 
             } else if (waveTypeRoll < 0.4 && level > 3) {
                 // BRUTES: Slow, tanky, large
-                eType = 'brute'; speed *= 0.6; hp *= 2; radius = 20;
+                eType = 'brute'; 
+                speed *= 0.6; 
+                hp *= 2 * curseBruteHpMult; 
+                radius = 20;
+                if (activeCurses.thickSkulls) finalXp = Math.floor(finalXp * 1.5);
                 if (i === 0) groupSize = Math.max(1, Math.floor(groupSize / 2));
             } else if (waveTypeRoll < 0.6 && level > 4) {
                 // RANGED: Skeletons that shoot
@@ -1012,7 +1233,7 @@ function spawnWave() {
 
             enemies.push({ 
                 type: eType, x, y, radius, baseSpeed: speed, hp: hp, maxHp: hp, attackRange: range, lastShot: 0,
-                xpDrop: Math.floor((hp + speed * 10) * brMult), dead: false, isBoss: false, poisoned: false, 
+                xpDrop: finalXp, dead: false, isBoss: false, poisoned: false, 
                 charmed: false, inTar: false, tarTime: 0, rending: false, lastTeslaHit: 0, chill: 0, frozen: 0, 
                 splinterSlow: 0, stickySlow: 0, updraftSlow: 0, stunned: 0, tetanus: false, rooted: 0 
             });
@@ -1057,7 +1278,15 @@ function isTarCovered(enemy) {
 }
 
 function getDedicatedEnemyStateSprite(enemy) {
-    if (enemy.isBoss) return enemy.poisoned && !enemy.charmed ? ASSETS.bossPoisoned : null;
+    if (enemy.isBoss) {
+        if (enemy.charmed) return ASSETS.bossCharmed;
+        if (enemy.frozen > 0) return ASSETS.bossFrozen;
+        if (enemy.stunned > 0) return ASSETS.bossStunned;
+        if (enemy.rooted > 0) return ASSETS.bossRooted;
+        if (isTarCovered(enemy)) return ASSETS.bossTarCovered;
+        if (enemy.poisoned) return ASSETS.bossPoisoned;
+        return null;
+    }
 
     if (enemy.type === 'swarmer') {
         if (enemy.charmed) return ASSETS.swarmerCharmed;
@@ -1088,11 +1317,15 @@ function hasDedicatedCrowdControlSprite(sprite) {
         || sprite === ASSETS.swarmerFrozen
         || sprite === ASSETS.swarmerStunned
         || sprite === ASSETS.swarmerRooted
-        || sprite === ASSETS.swarmerTarCovered;
+        || sprite === ASSETS.swarmerTarCovered
+        || sprite === ASSETS.bossFrozen
+        || sprite === ASSETS.bossStunned
+        || sprite === ASSETS.bossRooted
+        || sprite === ASSETS.bossTarCovered;
 }
 
 function hasDedicatedCharmedSprite(enemy, sprite) {
-    return enemy.charmed && (sprite === ASSETS.zombieCharmed || sprite === ASSETS.swarmerCharmed);
+    return enemy.charmed && (sprite === ASSETS.zombieCharmed || sprite === ASSETS.swarmerCharmed || sprite === ASSETS.bossCharmed);
 }
 
 function getEnemySprite(enemy) {
@@ -1291,9 +1524,6 @@ function drawHazard(hazard, currentFrameTime) {
 
     if (canDrawSprite) {
         const size = hazard.radius * 2;
-        ctx.beginPath();
-        ctx.arc(0, 0, hazard.radius, 0, Math.PI * 2);
-        ctx.clip();
         ctx.drawImage(sprite, -hazard.radius, -hazard.radius, size, size);
         return;
     }
@@ -1336,7 +1566,7 @@ function animate() {
         }
 
         if (survivalTimeMs >= nextBossTime) { nextBossTime += (300000 - bossTimerReduction); spawnBossEnemy(); }
-        const activeRechargeRate = rechargeRate * getActiveWeatherConfig().rechargeMult;
+        const activeRechargeRate = rechargeRate * getActiveWeatherConfig().rechargeMult * curseAmmoRechargeMod;
         if (currentAmmo < maxAmmo && currentFrameTime - lastRechargeTime >= activeRechargeRate) { currentAmmo++; lastRechargeTime += activeRechargeRate; updateAmmoUI(); }
     }
 
@@ -1359,16 +1589,23 @@ function animate() {
         if (struct.expires && currentFrameTime > struct.expires) { structures.splice(i, 1); continue; }
         
         if (!isPaused && isGameStarted) {
+            const trapCooldownMult = getTrapCooldownMult();
+            const trapEffectMult = getTrapEffectMult();
+
+            if (activeCurses.erosiveRunes && struct.type !== 'fire_pool') {
+                struct.hp -= 1 * (deltaTime / 1000);
+            }
+
             if (struct.type === 'barricade' && livingWoodRegen > 0) {
                 if (!struct.lastRegenTick) struct.lastRegenTick = currentFrameTime;
-                if (currentFrameTime - struct.lastRegenTick >= 1000) { struct.hp = Math.min(barricadeHP, struct.hp + livingWoodRegen); struct.lastRegenTick = currentFrameTime; }
+                if (currentFrameTime - struct.lastRegenTick >= 1000 * trapCooldownMult) { struct.hp = Math.min(barricadeHP, struct.hp + livingWoodRegen); struct.lastRegenTick = currentFrameTime; }
             } else if (struct.type === 'tesla') {
-                if (currentFrameTime - struct.lastTick > 2000) {
+                if (currentFrameTime - struct.lastTick > 2000 * trapCooldownMult * curseTeslaSpeedMult) {
                     let inRange = enemies.filter(e => !e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius);
                     if (inRange.length > 0) {
                         inRange.sort(() => Math.random() - 0.5); const zapCount = Math.min(1 + voltaicChainLevel, inRange.length);
                         for (let z = 0; z < zapCount; z++) {
-                            const target = inRange[z]; target.hp -= (teslaDamage + (target.inTar ? brittlePitchLevel : 0)); 
+                            const target = inRange[z]; target.hp -= (teslaDamage + (target.inTar ? brittlePitchLevel * trapEffectMult : 0));
                             if (staticFieldStun > 0) target.stunned = staticFieldStun;
                             target.lastTeslaHit = currentFrameTime;
                             if (target.hp <= 0) target.dead = true;
@@ -1376,15 +1613,26 @@ function animate() {
                         }
                         struct.lastTick = currentFrameTime;
                     }
+                    if (activeCurses.conductivePlating) {
+                        structures.forEach(s => {
+                            if (s.type === 'barricade' && Math.hypot(s.x - struct.x, s.y - struct.y) <= struct.radius) {
+                                s.hp -= (teslaDamage / 2);
+                                visualEffects.push({ type: 'lightning', x1: struct.x, y1: struct.y, x2: s.x, y2: s.y, expires: currentFrameTime + 150 });
+                            }
+                        });
+                        struct.lastTick = currentFrameTime;
+                    }
                 }
             } else if (struct.type === 'plague') {
                 enemies.forEach(e => { if (!e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) e.poisoned = true; });
             } else if (struct.type === 'wind') {
-                if (currentFrameTime - struct.lastTick > (3000 * swiftBreezesCd)) {
+                if (currentFrameTime - struct.lastTick > (3000 * swiftBreezesCd * trapCooldownMult)) {
                     enemies.forEach(e => {
                         let dist = Math.hypot(e.x - struct.x, e.y - struct.y);
                         if (dist <= struct.radius && !e.charmed) {
-                            let angle = Math.atan2(e.y - struct.y, e.x - struct.x); e.x += Math.cos(angle) * (50 + galeForceLevel * 10); e.y += Math.sin(angle) * (50 + galeForceLevel * 10);
+                            let angle = Math.atan2(e.y - struct.y, e.x - struct.x); 
+                            e.x += Math.cos(angle) * (50 + galeForceLevel * 10) * curseKnockbackMod; 
+                            e.y += Math.sin(angle) * (50 + galeForceLevel * 10) * curseKnockbackMod;
                             if (updraftSlow > 0) e.updraftSlow = 1500;
                             if (cuttingWindsDmg > 0) { e.hp -= cuttingWindsDmg; if (e.hp <= 0) e.dead = true; }
                         }
@@ -1396,24 +1644,24 @@ function animate() {
                 if (struct.type === 'tar' && struct.onFire && currentFrameTime > struct.onFire) struct.onFire = 0;
                 if (struct.type === 'fire_pool' || struct.onFire) {
                     enemies.forEach(e => {
-                        if (!e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.w) { e.hp -= 0.5; if (e.hp <= 0) e.dead = true; }
+                        if (!e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.w) { e.hp -= 0.5 * trapEffectMult; if (e.hp <= 0) e.dead = true; }
                     });
                 }
             } else if (struct.type === 'mending' || struct.type === 'charm') {
                 let localCdMult = 1;
                 if (soulBatteryReduction > 0) {
-                    structures.forEach(s => { if (s.type === 'soul' && Math.hypot(struct.x - s.x, struct.y - s.y) <= s.radius) localCdMult -= soulBatteryReduction; });
+                    structures.forEach(s => { if (s.type === 'soul' && Math.hypot(struct.x - s.x, struct.y - s.y) <= s.radius) localCdMult -= soulBatteryReduction * trapEffectMult; });
                     localCdMult = Math.max(0.1, localCdMult); 
                 }
                 if (struct.type === 'mending') {
-                    if (currentFrameTime - struct.lastTick > (mendingCooldown * localCdMult)) { 
+                    if (currentFrameTime - struct.lastTick > (mendingCooldown * localCdMult * trapCooldownMult)) {
                         if (health < maxHealth) { health++; updateHealthUI(); } 
                         else if (overhealMax > 0 && towerShield < overhealMax) { towerShield++; }
                         if (arcaneStimulationActive) { currentAmmo = Math.min(maxAmmo, currentAmmo + 1); updateAmmoUI(); }
                         struct.lastTick = currentFrameTime;
                     }
                 } else if (struct.type === 'charm') {
-                    if (currentFrameTime - struct.lastTick > (charmCooldown * localCdMult)) {
+                    if (currentFrameTime - struct.lastTick > (charmCooldown * localCdMult * trapCooldownMult)) {
                         const inRange = enemies.filter(e => !e.charmed && !e.isBoss && Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius);
                         if (inRange.length > 0) {
                             const target = inRange[Math.floor(Math.random() * inRange.length)]; target.charmed = true; struct.lastTick = currentFrameTime;
@@ -1447,11 +1695,12 @@ function animate() {
         
         if (struct.hp <= 0 && struct.type !== 'fire_pool') {
             if (struct.type === 'barricade' && barricadeExplosionDamage > 0) {
-                enemies.forEach(e => { if (!e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= 80) { e.hp -= (barricadeExplosionDamage + (e.inTar ? brittlePitchLevel : 0)); if (e.hp <= 0) e.dead = true; } });
+                enemies.forEach(e => { if (!e.charmed && Math.hypot(e.x - struct.x, e.y - struct.y) <= 80) { e.hp -= (barricadeExplosionDamage + (e.inTar ? brittlePitchLevel * getTrapEffectMult() : 0)); if (e.hp <= 0) e.dead = true; } });
                 visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: 80, expires: currentFrameTime + 200, color: 'rgba(255, 69, 0, 0.5)' });
             } else if (struct.type === 'meteor') {
                 let mKills = 0;
-                enemies.forEach(e => { if (Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) { e.hp -= 500; if (impactTremorsStun > 0) e.stunned = impactTremorsStun; if (e.hp <= 0) { e.dead = true; mKills++; } } });
+                const trapEffectMult = getTrapEffectMult();
+                enemies.forEach(e => { if (Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) { e.hp -= 500 * trapEffectMult; if (impactTremorsStun > 0) e.stunned = impactTremorsStun * trapEffectMult; if (e.hp <= 0) { e.dead = true; mKills++; } } });
                 visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: struct.radius, expires: currentFrameTime + 500, color: 'rgba(255, 112, 67, 0.8)' });
                 if (scorchedEarthActive) structures.push({ type: 'fire_pool', x: struct.x, y: struct.y, w: struct.radius, h: struct.radius, hp: 9999, expires: currentFrameTime + 5000 });
                 if (mKills >= armageddonKills) { setTimeout(() => {
@@ -1459,8 +1708,8 @@ function animate() {
                     visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: struct.radius*0.5, expires: Date.now() + 500, color: 'rgba(255, 112, 67, 0.9)' });
                 }, 2000); }
             } else if (struct.type === 'decoy') {
-                if (splinteringMockeryActive) { enemies.forEach(e => { if (Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) e.splinterSlow = 3000; }); visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: struct.radius, expires: currentFrameTime + 200, color: 'rgba(141, 110, 99, 0.5)' }); }
-                if (illusoryDoubleHp > 0) structures.push({ type: 'decoy', x: struct.x + 20, y: struct.y + 20, w: 20, h: 40, angle: 0, hp: (150 + wardHPBonus + reinforcedBarkHp) * illusoryDoubleHp, radius: struct.radius * 0.7, hitZombies: new Map(), lastTick: currentFrameTime });
+                if (splinteringMockeryActive && !activeCurses.rottenTimber) { enemies.forEach(e => { if (Math.hypot(e.x - struct.x, e.y - struct.y) <= struct.radius) e.splinterSlow = 3000 * getTrapEffectMult(); }); visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: struct.radius, expires: currentFrameTime + 200, color: 'rgba(141, 110, 99, 0.5)' }); }
+                if (illusoryDoubleHp > 0) structures.push({ type: 'decoy', x: struct.x + 20, y: struct.y + 20, w: 20, h: 40, angle: 0, hp: (150 + wardHPBonus + reinforcedBarkHp) * illusoryDoubleHp * (activeCurses.rottenTimber ? 0.7 : 1), radius: struct.radius * 0.7, hitZombies: new Map(), lastTick: currentFrameTime });
             } else if (struct.type === 'mending' && martyrsGraceHeal > 0) {
                 health = Math.min(maxHealth, health + martyrsGraceHeal); updateHealthUI();
                 visualEffects.push({ type: 'explosion', x: struct.x, y: struct.y, radius: struct.radius, expires: currentFrameTime + 200, color: 'rgba(255, 215, 0, 0.5)' });
@@ -1518,7 +1767,7 @@ function animate() {
                     if (e.dead || e.charmed) return; 
                     if (Math.hypot(spell.targetX - e.x, spell.targetY - e.y) < spell.radius + e.radius && !spell.hitEnemies.has(e)) {
                         spell.hitEnemies.add(e); 
-                        let dmg = Math.floor(Math.random() * 4) + 3 + spell.damageBonus + (e.inTar ? brittlePitchLevel : 0);
+                        let dmg = Math.floor(Math.random() * 4) + 3 + spell.damageBonus + (e.inTar ? brittlePitchLevel * getTrapEffectMult() : 0);
                         if (shatterStrikeActive && e.frozen > 0) dmg *= 2;
                         if (rendingBarbsActive && e.rending) dmg *= 1.5;
                         e.hp -= dmg;
@@ -1567,7 +1816,7 @@ function animate() {
         for (let i = enemies.length - 1; i >= 0; i--) {
             const e = enemies[i];
 
-            if (e.poisoned && !e.charmed) { e.hp -= (poisonTickDamage * miasmaCloudSpeed); if (e.hp <= 0) e.dead = true; }
+            if (e.poisoned && !e.charmed) { e.hp -= (poisonTickDamage * miasmaCloudSpeed * getTrapEffectMult()); if (e.hp <= 0) e.dead = true; }
             if (e.tetanus) { e.hp -= (tetanusDamage * (deltaTime / 1000)); if (e.hp <= 0) e.dead = true; }
 
             if (e.dead) {
@@ -1575,11 +1824,13 @@ function animate() {
                 const weatherGoldMult = getActiveWeatherConfig().goldMult;
                 if (e.isBoss) { 
                     const bossGoldGain = Math.max(1, Math.round((2 + bossGoldBonus + bountyHunterBonus) * weatherGoldMult));
-                    savedData.gold += bossGoldGain; runGold += bossGoldGain; saveGame(); updateGoldUI(); bossesKilled++; 
+                    savedData.gold += bossGoldGain; runGold += bossGoldGain; saveGame(); updateGoldUI(); 
+                    bossesKilled++; 
+                    cursesQueued++; // Queue up a curse!
                     triggerRandomWeather(); 
                     if (bossesKilled === 10 && !crystalsSpawned) { crystalsSpawned = true; spawnCrystals(1); } else if (bossesKilled === 15 && !crystalsSpawned && savedData.prestigeUpgrades.trueEnding > 0) { crystalsSpawned = true; spawnCrystals(2); }
                 } 
-                else if (killCount % goldDropThreshold === 0) {
+                else if (killCount % (goldDropThreshold + curseGoldThresholdMod) === 0) {
                     const goldDropGain = Math.max(1, Math.round(weatherGoldMult));
                     savedData.gold += goldDropGain; runGold += goldDropGain; saveGame(); updateGoldUI();
                 }
@@ -1601,23 +1852,27 @@ function animate() {
                 if (e.wireHit && bloodlettingXp > 0) finalXp *= (1 + bloodlettingXp);
 
                 structures.forEach(s => { 
-                    if (s.type === 'soul' && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius) { finalXp *= soulMultiplier; if (Math.random() < soulEchoesChance) finalXp += 50; }
+                    if (s.type === 'soul' && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius) {
+                        const trapEffectMult = getTrapEffectMult();
+                        finalXp *= 1 + ((soulMultiplier - 1) * trapEffectMult);
+                        if (Math.random() < soulEchoesChance * trapEffectMult) finalXp += 50;
+                    }
                     if (s.type === 'crucible' && Math.hypot(e.x - s.x, e.y - s.y) <= s.radius) inCrucible = true;
                 });
 
                 if (Math.random() < overloadChance) finalXp *= 2;
                 
                 if (inCrucible) {
-                    let goldChance = 0.01 + (transmutationLevel * 0.005) + (Math.floor(savedData.gold / 10) * greedsRewardScale);
+                    let goldChance = (0.01 + (transmutationLevel * 0.005) + (Math.floor(savedData.gold / 10) * greedsRewardScale)) * getTrapEffectMult();
                     if (Math.random() < goldChance) {
                         const crucibleGoldGain = Math.max(1, Math.round(weatherGoldMult));
                         savedData.gold += crucibleGoldGain; runGold += crucibleGoldGain; if (philosophersStoneActive && health < maxHealth) { health++; updateHealthUI(); } saveGame(); updateGoldUI();
-                    } else if (foolsGoldChance > 0 && Math.random() < foolsGoldChance) {
+                    } else if (foolsGoldChance > 0 && Math.random() < foolsGoldChance * getTrapEffectMult()) {
                         currentAmmo = Math.min(maxAmmo, currentAmmo + 1); updateAmmoUI();
                     }
                 }
 
-                if (e.poisoned && Math.random() < contagionChance) {
+                if (e.poisoned && Math.random() < contagionChance * getTrapEffectMult()) {
                     let closest = null, closestDist = Infinity;
                     for(let j=0; j<enemies.length; j++) { if(i!==j && !enemies[j].poisoned && !enemies[j].charmed && !enemies[j].dead) { let dist = Math.hypot(e.x - enemies[j].x, e.y - enemies[j].y); if (dist < closestDist) { closestDist = dist; closest = enemies[j]; } } }
                     if (closest) closest.poisoned = true;
@@ -1635,13 +1890,24 @@ function animate() {
                     }
                 }
 
+                if (activeCurses.necromancersSpite && !e.isBoss && Math.random() < 0.1) {
+                    let speed = (0.4 + Math.random() * 0.3) * (1 + (level * 0.08)) * 1.8 * curseSwarmerSpeedMult;
+                    let hp = Math.max(1, Math.floor((Math.random() * 11 + 5) * (1 + (level * 0.20)) * 0.3));
+                    enemies.push({ 
+                        type: 'swarmer', x: e.x, y: e.y, radius: 10, baseSpeed: speed, hp: hp, maxHp: hp, attackRange: 0, lastShot: 0,
+                        xpDrop: Math.floor((hp + speed * 10) * (1 + bloodReckoningReduction * 1.5)), dead: false, isBoss: false, poisoned: false, 
+                        charmed: false, inTar: false, tarTime: 0, rending: false, lastTeslaHit: 0, chill: 0, frozen: 0, 
+                        splinterSlow: 0, stickySlow: 0, updraftSlow: 0, stunned: 0, tetanus: false, rooted: 0 
+                    });
+                }
+
                 finalXp = Math.floor(finalXp * getActiveWeatherConfig().xpMult);
                 addXp(finalXp); enemies.splice(i, 1); continue; 
             }
 
             let speedModifier = 1; let hitTarget = null; e.inTar = false; e.wireHit = false;
             let closestDecoyDist = Infinity; let activeDecoy = null;
-            structures.forEach(s => { if (s.type === 'decoy') { let dist = Math.hypot(e.x - s.x, e.y - s.y); if (dist <= s.radius && dist < closestDecoyDist) { closestDecoyDist = dist; activeDecoy = s; } } });
+            structures.forEach(s => { if (s.type === 'decoy') { let dist = Math.hypot(e.x - s.x, e.y - s.y); if (dist <= s.radius * getTrapEffectMult() && dist < closestDecoyDist) { closestDecoyDist = dist; activeDecoy = s; } } });
 
             let targetAngle = Math.atan2(player.y - e.y, player.x - e.x);
             if (activeDecoy && !e.charmed) targetAngle = Math.atan2(activeDecoy.y - e.y, activeDecoy.x - e.x);
@@ -1673,8 +1939,13 @@ function animate() {
                 structures.forEach(struct => {
                     if (struct.type === 'tar' || struct.type === 'frost') {
                         if (getCollisionData(e, struct).collided) {
-                            if (struct.type === 'tar') { speedModifier *= tarSpeedMod; e.inTar = true; e.stickySlow = 2000; }
-                            if (struct.type === 'frost') { e.chill += deltaTime; if (e.chill > 2000 / flashFreezeSpeed) { e.frozen = 2000 + (deepFreezeLevel * 500); e.chill = 0; } if (e.frozen <= 0) speedModifier *= (0.7 - bitingColdSlow); }
+                            const trapEffectMult = getTrapEffectMult();
+                            if (struct.type === 'tar') { speedModifier *= 1 - ((1 - (tarSpeedMod + curseTarSlowMod)) * trapEffectMult); e.inTar = true; e.stickySlow = 2000 * trapEffectMult; }
+                            if (struct.type === 'frost') {
+                                e.chill += deltaTime * trapEffectMult;
+                                if (e.chill > 2000 / flashFreezeSpeed) { e.frozen = (2000 + (deepFreezeLevel * 500)) * trapEffectMult; e.chill = 0; }
+                                if (e.frozen <= 0) speedModifier *= 1 - ((0.3 + bitingColdSlow) * trapEffectMult);
+                            }
                         }
                     } else if (struct.type !== 'plague' && struct.type !== 'tesla' && struct.type !== 'charm' && struct.type !== 'wind' && struct.type !== 'fire_pool' && struct.type !== 'soul' && struct.type !== 'mending' && struct.type !== 'crucible' && struct.type !== 'focus') {
                         const col = getCollisionData(e, struct);
@@ -1682,35 +1953,43 @@ function animate() {
                             if (struct.type === 'wire') {
                                 e.wireHit = true; if (rendingBarbsActive) e.rending = true;
                                 const lastHitTime = struct.hitZombies.get(e) || 0;
-                                if (currentFrameTime - lastHitTime >= 500) {
-                                    struct.hitZombies.set(e, currentFrameTime); e.hp -= (Math.floor(Math.random() * 6) + 5 + wireDamageBonus + (e.inTar ? brittlePitchLevel : 0));
-                                    if (tetanusDamage > 0) e.tetanus = true;
-                                    if (tangledBarbsChance > 0 && Math.random() < tangledBarbsChance) e.rooted = 1000;
+                                if (currentFrameTime - lastHitTime >= 500 * getTrapCooldownMult()) {
+                                    struct.hitZombies.set(e, currentFrameTime); e.hp -= (Math.floor(Math.random() * 6) + 5 + wireDamageBonus + (e.inTar ? brittlePitchLevel * getTrapEffectMult() : 0));
+                                    
+                                    if (!activeCurses.dullBarbs) {
+                                        if (tetanusDamage > 0) e.tetanus = true;
+                                        if (tangledBarbsChance > 0 && Math.random() < tangledBarbsChance) e.rooted = 1000;
+                                    }
+
                                     if (e.hp <= 0) e.dead = true;
                                 }
                             } else if (struct.type === 'barricade') {
-                                if (Math.random() < (kineticRepulsionLevel * 0.10)) { e.x += col.normalX * 40; e.y += col.normalY * 40; } else { hitTarget = struct; e.x += col.normalX * col.overlap; e.y += col.normalY * col.overlap; }
+                                if (Math.random() < (kineticRepulsionLevel * 0.10)) { e.x += col.normalX * 40 * curseKnockbackMod; e.y += col.normalY * 40 * curseKnockbackMod; } else { hitTarget = struct; e.x += col.normalX * col.overlap; e.y += col.normalY * col.overlap; }
                             } else { hitTarget = struct; e.x += col.normalX * col.overlap; e.y += col.normalY * col.overlap; }
                         }
                     }
                 });
 
                 if (hitTarget) {
-                    let structDmg = e.isBoss ? 2.5 : 0.5;
+                    let structDmg = e.isBoss ? 2.5 * curseBossDmgMod : 0.5;
                     if (e.poisoned && noxiousWeaknessActive) structDmg /= 2;
+
+                    // Curse modifier for Barricades taking more damage
+                    if (hitTarget.type === 'barricade') structDmg *= curseWoodDmgMult;
 
                     if (hitTarget.type === 'barricade' && Math.random() < stalwartDeflectionChance) {
                     } else {
                         hitTarget.hp -= structDmg;
+                        if (activeCurses.vampiricHunger) e.hp = Math.min(e.maxHp, e.hp + (e.maxHp * 0.1));
                     }
 
                     if (hitTarget.type === 'barricade' && ironbarkDamage > 0) { e.hp -= ironbarkDamage; if (e.hp <= 0) e.dead = true; }
-                    if (hitTarget.type === 'decoy' && thornyCarvingsDmg > 0) { e.hp -= thornyCarvingsDmg; if (e.hp <= 0) e.dead = true; }
+                    if (hitTarget.type === 'decoy' && thornyCarvingsDmg > 0) { e.hp -= thornyCarvingsDmg * getTrapEffectMult(); if (e.hp <= 0) e.dead = true; }
                 }
 
                 if (Math.hypot(player.x - e.x, player.y - e.y) - e.radius - 30 < 1) {
                     enemies.splice(i, 1); 
-                    let dmgIn = e.isBoss ? 40 : 10;
+                    let dmgIn = e.isBoss ? 40 * curseBossDmgMod : 10;
                     if (e.poisoned && noxiousWeaknessActive) dmgIn /= 2;
 
                     if (towerShield > 0) { let block = Math.min(towerShield, dmgIn); towerShield -= block; dmgIn -= block; }
@@ -1719,7 +1998,7 @@ function animate() {
             }
 
             if (weatherState === 'active' && currentWeather === 'Heatwave' && e.inTar) {
-                speedModifier /= tarSpeedMod;
+                speedModifier /= (tarSpeedMod + curseTarSlowMod);
                 e.hp -= 1; 
                 if (e.hp <= 0) e.dead = true;
             }
@@ -1727,7 +2006,7 @@ function animate() {
             if (e.inTar) {
                 e.tarTime += deltaTime;
                 if (fossilizedPitchActive && e.tarTime >= 3000) {
-                    e.stunned = 2000; e.tarTime = 0;
+                    e.stunned = 2000 * getTrapEffectMult(); e.tarTime = 0;
                 }
             } else {
                 e.tarTime = 0;
@@ -1738,12 +2017,12 @@ function animate() {
             if (e.rooted > 0) { e.rooted -= deltaTime; speedModifier = 0; }
             if (e.splinterSlow > 0) { e.splinterSlow -= deltaTime; speedModifier *= 0.7; }
             if (e.updraftSlow > 0) { e.updraftSlow -= deltaTime; speedModifier *= (1 - updraftSlow); }
-            if (!e.inTar && e.stickySlow > 0) { e.stickySlow -= deltaTime; speedModifier *= (1 - stickyResidueSlow); }
+            if (!e.inTar && e.stickySlow > 0) { e.stickySlow -= deltaTime; speedModifier *= (1 - (stickyResidueSlow * getTrapEffectMult())); }
             speedModifier *= getActiveWeatherConfig().enemySpeedMult;
 
             const distToTower = Math.hypot(player.x - e.x, player.y - e.y);
             if (e.type === 'ranged' && !e.charmed && distToTower <= e.attackRange) {
-                if (currentFrameTime - e.lastShot > 2000) {
+                if (currentFrameTime - e.lastShot > 2000 * curseRangedCooldownMod) {
                     enemyProjectiles.push({ 
                         x: e.x, y: e.y, targetX: player.x, targetY: player.y, speed: 4 
                     });
@@ -1850,7 +2129,7 @@ function animate() {
         ctx.restore();
     } else if (!isPaused && isGameStarted) {
         const cannotShoot = Math.hypot(player.x - mouseX, player.y - mouseY) <= restrictedRadius || currentAmmo <= 0; 
-        let localBlastRadius = maxBlastRadius;
+        let localBlastRadius = maxBlastRadius * curseBlastRadiusMult; // Apply curse scaling
         structures.forEach(s => { if (s.type === 'focus' && Math.hypot(mouseX - s.x, mouseY - s.y) <= s.radius) localBlastRadius *= 1.5 * refractingLensRad; });
 
         ctx.beginPath(); ctx.arc(mouseX, mouseY, localBlastRadius, 0, Math.PI * 2);
@@ -1867,6 +2146,12 @@ function triggerRandomWeather() {
     
     currentWeather = storm.name;
     weatherState = 'fading_in';
+
+    let activeDuration = storm.duration;
+    if (activeCurses.unstableAtmosphere && (storm.name === 'Acid Rain' || storm.name === 'Thick Fog' || storm.name === 'Blizzard')) {
+        activeDuration *= 2;
+    }
+
     weatherTimer = Date.now() + 10000; // 10 seconds to fade in
     weatherAlpha = 0;
     
@@ -1878,7 +2163,7 @@ function triggerRandomWeather() {
     weatherStartTimeout = setTimeout(() => {
         if (!isGameStarted || currentWeather !== storm.name || weatherState !== 'fading_in') return;
         weatherState = 'active';
-        weatherTimer = Date.now() + storm.duration;
+        weatherTimer = Date.now() + activeDuration;
         updateWeatherDisplay(storm.name);
         weatherStartTimeout = null;
     }, 10000);
@@ -1916,10 +2201,7 @@ function updateAndDrawWeather(ctx, currentFrameTime) {
         }
         ctx.stroke();
 
-        // Gameplay effect: Slowly damage all structures
-        if (weatherState === 'active' && Math.random() < 0.1) {
-            structures.forEach(s => { s.hp -= 0.5; });
-        }
+        // Gameplay effect: Trap cooldowns are doubled and continuous effects are halved.
 
     } else if (currentWeather === 'Heatwave') {
         // Draw hot orange overlay
@@ -1934,7 +2216,7 @@ function updateAndDrawWeather(ctx, currentFrameTime) {
         ctx.fillRect(0, 0, weatherWidth, weatherHeight);
 
         // Random Lightning Flashes
-        if (weatherState === 'active' && currentFrameTime - lastLightningStrike > Math.random() * 5000 + 2000) {
+        if (!isPaused && weatherState === 'active' && currentFrameTime - lastLightningStrike > Math.random() * 5000 + 2000) {
             ctx.globalAlpha = 0.8;
             ctx.fillStyle = 'white';
             ctx.fillRect(0, 0, weatherWidth, weatherHeight);
@@ -1951,10 +2233,23 @@ function updateAndDrawWeather(ctx, currentFrameTime) {
             }
         }
     } else if (currentWeather === 'Thick Fog') {
-        ctx.fillStyle = '#cfd8dc';
+        // Thick fog stays light around the tower and becomes increasingly
+        // opaque with distance. Scale its own opacity to the full fade range;
+        // other weather effects intentionally top out at 50% opacity.
+        ctx.globalAlpha = Math.min(1, weatherAlpha * 2);
+        const visibilityRadius = Math.min(weatherWidth, weatherHeight) * 0.75 * getWeatherConfig('Thick Fog').visibilityRadiusMult;
+        const fog = ctx.createRadialGradient(
+            player.x, player.y, restrictedRadius * 0.45,
+            player.x, player.y, visibilityRadius
+        );
+        fog.addColorStop(0, 'rgba(207, 216, 220, 0.06)');
+        fog.addColorStop(0.35, 'rgba(207, 216, 220, 0.18)');
+        fog.addColorStop(0.7, 'rgba(207, 216, 220, 0.62)');
+        fog.addColorStop(1, 'rgba(207, 216, 220, 0.92)');
+        ctx.fillStyle = fog;
         ctx.fillRect(0, 0, weatherWidth, weatherHeight);
 
-        ctx.fillStyle = 'rgba(236, 239, 241, 0.18)';
+        ctx.fillStyle = 'rgba(236, 239, 241, 0.12)';
         for (let i = 0; i < 24; i++) {
             const x = (currentFrameTime * 0.01 + i * 130) % (weatherWidth + 220) - 110;
             const y = (i * 75 + Math.sin(currentFrameTime * 0.0015 + i) * 45 + weatherHeight * 0.15) % (weatherHeight + 160) - 80;
@@ -1962,18 +2257,6 @@ function updateAndDrawWeather(ctx, currentFrameTime) {
             ctx.ellipse(x, y, 120, 55, 0, 0, Math.PI * 2);
             ctx.fill();
         }
-
-        const visibilityRadius = Math.min(weatherWidth, weatherHeight) * 0.5 * getWeatherConfig('Thick Fog').visibilityRadiusMult;
-        const fogGap = ctx.createRadialGradient(player.x, player.y, visibilityRadius * 0.35, player.x, player.y, visibilityRadius);
-        fogGap.addColorStop(0, 'rgba(0, 0, 0, 1)');
-        fogGap.addColorStop(0.7, 'rgba(0, 0, 0, 0.85)');
-        fogGap.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.fillStyle = fogGap;
-        ctx.beginPath();
-        ctx.arc(player.x, player.y, visibilityRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalCompositeOperation = 'source-over';
     } else if (currentWeather === 'Blizzard') {
         ctx.fillStyle = '#90caf9';
         ctx.fillRect(0, 0, weatherWidth, weatherHeight);
